@@ -15,6 +15,20 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **Phase 0** — root tooling files: `.gitignore`, `.gitattributes`, `.nvmrc`.
 - **Phase 0** — public GitHub repository created at
   https://github.com/Owais101074/ecommerce-platform and initial commit pushed.
+- **Phase 1** — Express 5 + TypeScript server foundation with strict compiler
+  options and `nodenext` resolution.
+- **Phase 1** — Zod-validated environment config that exits on invalid values.
+- **Phase 1** — Mongoose connection with lifecycle logging and graceful shutdown.
+- **Phase 1** — central `ApiError` and error middleware handling Zod, Mongoose
+  validation/cast, duplicate-key, and malformed-JSON errors.
+- **Phase 1** — `GET /api/v1/health` reporting uptime and database state.
+- **Phase 1** — ESLint 10 flat config and Prettier.
+
+### Fixed
+
+- **Phase 1** — TypeScript 6 rejects `moduleResolution: node`; switched to
+  `nodenext` while still emitting CommonJS.
+- **Phase 1** — dotenv 18 startup banner suppressed with `quiet: true`.
 
 ### Decisions
 

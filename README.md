@@ -29,7 +29,7 @@ ecommerce-platform/
 | Phase | Description | Status |
 |---|---|---|
 | 0 | Planning and architecture | In progress |
-| 1 | Backend foundation | Not started |
+| 1 | Backend foundation | Complete |
 | 2 | Authentication and authorization | Not started |
 | 3 | Products and categories | Not started |
 | 4 | Frontend foundation | Not started |
@@ -51,7 +51,52 @@ ecommerce-platform/
 
 ## Getting started
 
-Setup instructions are added as each app is initialized.
+### Prerequisites
+
+- Node.js 22 (`nvm use` reads `.nvmrc`)
+- MongoDB running locally on `127.0.0.1:27017`
+
+### Server
+
+```bash
+cd server
+npm install
+cp .env.example .env    # Windows CMD: copy .env.example .env
+npm run dev
+```
+
+The API starts at `http://localhost:5000`.
+
+Verify it:
+
+```bash
+curl http://localhost:5000/api/v1/health
+```
+
+```json
+{
+  "success": true,
+  "message": "Server is healthy",
+  "data": {
+    "status": "ok",
+    "environment": "development",
+    "uptime": 12,
+    "database": "connected",
+    "timestamp": "2026-11-02T13:52:18.689Z"
+  }
+}
+```
+
+### Server scripts
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start with tsx watch (reloads on save) |
+| `npm run build` | Compile to `dist/` |
+| `npm start` | Run the compiled build |
+| `npm run typecheck` | TypeScript check, no output files |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier write |
 
 ## Author
 

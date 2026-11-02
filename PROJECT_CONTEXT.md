@@ -4,8 +4,8 @@ Living state document. Read this before starting any work; update it at the end 
 every phase. If chat context is lost, this file is the source of truth.
 
 **Last updated:** 2026-11-02
-**Current phase:** Phase 0 — Planning and Architecture (complete, awaiting review)
-**Completed phases:** Phase 0
+**Current phase:** Phase 1 — Backend Foundation (complete, awaiting review)
+**Completed phases:** Phase 0, Phase 1
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -85,6 +85,8 @@ ecommerce-platform/
 | Response shape | `{ success, message, data, meta? }` | Predictable frontend handling |
 | Errors | `ApiError` + single global error middleware | Consistent status codes and payloads |
 | API prefix | `/api/v1` | Room for breaking changes later |
+| API framework | Express 5 | Native async error forwarding; no `asyncHandler` wrapper needed |
+| Module system | TypeScript `nodenext`, compiled to CommonJS | Modern resolution without ESM `.js` import friction |
 | IDs | Mongo ObjectId | Default; slugs used for public product/category URLs |
 | Deletes | Soft delete on products/users (`isActive`) | Orders keep valid references |
 | Order data | Price/name/address snapshots | Historical accuracy after edits |
@@ -122,6 +124,7 @@ Marked complete here as each phase lands.
 | Node | v22.14.0 via nvm4w (`.nvmrc`) |
 | npm | 10.9.2 |
 | MongoDB | 8.2 local, `mongodb://127.0.0.1:27017/ecommerce_dev` |
+| API (dev) | http://localhost:5000/api/v1 |
 | VS Code | 1.139.1 |
 | GitHub CLI | 2.103.3, authenticated as `Owais101074` (keyring) |
 | GitHub repo | `ecommerce-platform`, public, default branch `main` |
@@ -129,9 +132,14 @@ Marked complete here as each phase lands.
 
 ## 8. Installed dependencies
 
-None yet. Added per phase and recorded here.
+**server — runtime:** express 5, mongoose 9, dotenv 18, zod 4, cors 2, morgan 1.
+**server — dev:** typescript 6, tsx 4, eslint 10, typescript-eslint 8,
+eslint-config-prettier 10, prettier 3, `@types/*`.
+**client:** none yet.
 
-## 9. Phase 0 checklist
+## 9. Phase checklists
+
+### Phase 0 — Planning and Architecture
 
 - [x] Inspect environment and tool versions
 - [x] Choose monorepo structure
@@ -141,7 +149,21 @@ None yet. Added per phase and recorded here.
 - [x] Design API contract
 - [x] Create GitHub repository `ecommerce-platform` (public)
 - [x] Initial commit `53b113e` and push to `origin/main`
-- [ ] Close Phase 0 review
+- [x] Close Phase 0 review
+
+### Phase 1 — Backend Foundation
+
+- [x] Express 5 + TypeScript scaffold with strict compiler options
+- [x] ESLint 10 flat config + Prettier
+- [x] Zod-validated environment configuration (fail fast at startup)
+- [x] MongoDB connection with lifecycle logging and 5s selection timeout
+- [x] Central `ApiError` + error middleware (Zod, Mongoose, duplicate key, bad JSON)
+- [x] `notFound` handler and 10kb JSON body limit
+- [x] Graceful shutdown on SIGINT/SIGTERM with 10s force exit
+- [x] `GET /api/v1/health` reporting database state
+- [x] `typecheck`, `lint`, and `build` pass
+- [x] Live checks: 200 health, 404 unknown route, 400 invalid JSON
+- [ ] Close Phase 1 review
 
 **Scope note:** app scaffolding is intentionally deferred — `server/` is
 initialized at the start of Phase 1 and `client/` at the start of Phase 4, so
@@ -152,7 +174,7 @@ tooling is configured once, in context, instead of twice.
 | Phase | Task | Status |
 |---|---|---|
 | 0 | GitHub repo + first push | done |
-| 1 | Express + TS scaffold, env config, DB connect, error middleware, `/health` | not started |
+| 1 | Express + TS scaffold, env config, DB connect, error middleware, `/health` | done |
 | 2 | Auth module, JWT, roles, protected routes | not started |
 | 3 | Category + product CRUD, search/filter/sort/pagination, seed script | not started |
 | 4 | Vite + React + Tailwind + Router + Query scaffold | not started |
