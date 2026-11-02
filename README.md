@@ -46,6 +46,7 @@ ecommerce-platform/
 ## Documentation
 
 - [Project context](PROJECT_CONTEXT.md) — architecture, decisions, current state
+- [Project guide](PROJECT_GUIDE.md) — complete phase-by-phase guide, workflows and explanations
 - [API contract](docs/api-contract.md) — planned endpoints and conventions
 - [Changelog](CHANGELOG.md)
 

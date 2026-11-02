@@ -2,6 +2,8 @@
 
 Living state document. Read this before starting any work; update it at the end of
 every phase. If chat context is lost, this file is the source of truth.
+For a full project explanation (phases, architecture, workflows, interview Q&A),
+read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-02
 **Current phase:** Phase 2 — Authentication and Authorization (complete, awaiting review)
