@@ -70,16 +70,23 @@ contract the frontend is built against; changes require a note in
 | POST | `/auth/register` | public | Create customer account |
 | POST | `/auth/login` | public | Returns access token; sets refresh cookie |
 | POST | `/auth/refresh` | public (cookie) | Rotate refresh token, issue access token |
-| POST | `/auth/logout` | auth | Revoke refresh token, clear cookie |
+| POST | `/auth/logout` | public (cookie) | Revoke refresh token, clear cookie |
 | GET | `/auth/me` | auth | Current session user |
 
-## Users — Phase 2
+The refresh token lives only in an httpOnly cookie scoped to `/api/v1/auth`.
+Access tokens are returned in the JSON body and sent as `Authorization: Bearer`.
+
+## Admin smoke route — Phase 2
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| GET | `/users/me` | auth | Profile |
-| PATCH | `/users/me` | auth | Update name / phone |
-| PATCH | `/users/me/password` | auth | Change password (requires current password) |
+| GET | `/admin/ping` | admin | Verifies JWT authentication and role checks |
+
+## Users — deferred
+
+Profile read/update and password change are planned for Phase 5, together with
+the account screens that consume them. They are intentionally not part of
+Phase 2.
 
 ## Addresses — Phase 7
 
@@ -185,7 +192,7 @@ contract the frontend is built against; changes require a note in
 | Phase | Endpoints added |
 |---|---|
 | 1 | `/health` |
-| 2 | `/auth/*`, `/users/*` |
+| 2 | `/auth/*`, `/admin/ping` |
 | 3 | `/categories/*`, `/products/*` |
 | 6 | `/cart/*`, `/wishlist/*` |
 | 7 | `/addresses/*`, `POST /orders`, `GET /orders*` |

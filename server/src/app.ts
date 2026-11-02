@@ -1,9 +1,12 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import morgan from 'morgan';
 import { env } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
+import adminRoutes from './modules/admin/admin.routes';
+import authRoutes from './modules/auth/auth.routes';
 import healthRoutes from './modules/health/health.routes';
 
 export const app = express();
@@ -16,12 +19,15 @@ app.disable('x-powered-by');
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(cookieParser());
 
 if (env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
 app.use('/api/v1/health', healthRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

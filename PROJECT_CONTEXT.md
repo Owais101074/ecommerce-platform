@@ -4,8 +4,8 @@ Living state document. Read this before starting any work; update it at the end 
 every phase. If chat context is lost, this file is the source of truth.
 
 **Last updated:** 2026-11-02
-**Current phase:** Phase 1 — Backend Foundation (complete, awaiting review)
-**Completed phases:** Phase 0, Phase 1
+**Current phase:** Phase 2 — Authentication and Authorization (complete, awaiting review)
+**Completed phases:** Phase 0, Phase 1, Phase 2
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -64,9 +64,10 @@ ecommerce-platform/
 │       ├── config/               env.ts (Zod), db.ts
 │       ├── middleware/           auth, authorize, validate, errorHandler, notFound, rateLimit
 │       ├── modules/
-│       │   └── <module>/         routes, controller, service, model, validation, types
-│       ├── utils/                ApiError, ApiResponse, asyncHandler, jwt, pagination
-│       ├── types/                express.d.ts
+│       │   └── <module>/         routes, controller, service, model, mapper, validation, types
+│       ├── scripts/              one-off CLI tasks (seedAdmin)
+│       ├── utils/                ApiError, ApiResponse, jwt, password, cookies, pagination
+│       ├── types/                express.d.ts (Request.user augmentation)
 │       ├── app.ts
 │       └── server.ts
 ├── docs/
@@ -80,7 +81,9 @@ ecommerce-platform/
 | Language | TypeScript strict mode, no implicit `any` | Catch shape errors at compile time |
 | Money | Integer **paise** | Avoids floating point errors in totals/tax |
 | Auth | 15 min access token + 7 day refresh token in httpOnly cookie | XSS-safe refresh, revocable sessions |
-| Passwords | bcrypt, cost factor 12 | Slow hashing resists brute force |
+| Refresh storage | SHA-256 hash of the refresh token on the user document | A database leak does not expose usable tokens |
+| Refresh rotation | New token on every refresh; reuse of an old token clears the session | Detects stolen refresh tokens |
+| Passwords | bcryptjs, cost factor 12 | Slow hashing resists brute force |
 | Validation | Zod for env and request bodies | One schema source; infer TS types |
 | Response shape | `{ success, message, data, meta? }` | Predictable frontend handling |
 | Errors | `ApiError` + single global error middleware | Consistent status codes and payloads |
@@ -116,6 +119,10 @@ ecommerce-platform/
 Planned endpoints and conventions: [docs/api-contract.md](docs/api-contract.md).
 Marked complete here as each phase lands.
 
+**Implemented:** `/health` (Phase 1); `/auth/register`, `/auth/login`,
+`/auth/refresh`, `/auth/logout`, `/auth/me`, `/admin/ping` (Phase 2).
+User profile endpoints are deferred to Phase 5 with the account UI.
+
 ## 7. Environment
 
 | Item | Value |
@@ -125,6 +132,8 @@ Marked complete here as each phase lands.
 | npm | 10.9.2 |
 | MongoDB | 8.2 local, `mongodb://127.0.0.1:27017/ecommerce_dev` |
 | API (dev) | http://localhost:5000/api/v1 |
+| Auth env | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12` |
+| Admin seed | `npm run seed:admin -- <email> <password> [name]` |
 | VS Code | 1.139.1 |
 | GitHub CLI | 2.103.3, authenticated as `Owais101074` (keyring) |
 | GitHub repo | `ecommerce-platform`, public, default branch `main` |
@@ -132,9 +141,10 @@ Marked complete here as each phase lands.
 
 ## 8. Installed dependencies
 
-**server — runtime:** express 5, mongoose 9, dotenv 18, zod 4, cors 2, morgan 1.
+**server — runtime:** express 5, mongoose 9, dotenv 18, zod 4, cors 2, morgan 1,
+bcryptjs 3, jsonwebtoken 9, cookie-parser 1.
 **server — dev:** typescript 6, tsx 4, eslint 10, typescript-eslint 8,
-eslint-config-prettier 10, prettier 3, `@types/*`.
+eslint-config-prettier 10, prettier 3, `@types/*` (incl. jsonwebtoken, cookie-parser).
 **client:** none yet.
 
 ## 9. Phase checklists
@@ -163,7 +173,27 @@ eslint-config-prettier 10, prettier 3, `@types/*`.
 - [x] `GET /api/v1/health` reporting database state
 - [x] `typecheck`, `lint`, and `build` pass
 - [x] Live checks: 200 health, 404 unknown route, 400 invalid JSON
-- [ ] Close Phase 1 review
+- [x] Close Phase 1 review
+
+### Phase 2 — Authentication and Authorization
+
+- [x] `users` collection: unique lowercase email, bcrypt hash, role enum,
+      `isActive`, hashed refresh token + expiry, timestamps
+- [x] Zod register/login schemas and reusable `validate` middleware
+- [x] bcryptjs hashing (cost from `BCRYPT_ROUNDS`, default 12)
+- [x] Access token (15 min, Bearer) and refresh token (7 days, httpOnly cookie)
+- [x] Refresh rotation with hashed storage and reuse detection
+- [x] `authenticate` middleware: token verification, user lookup, inactive check
+- [x] `authorize(...roles)` middleware with `customer` / `admin`
+- [x] `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`,
+      `POST /auth/logout`, `GET /auth/me`
+- [x] `GET /admin/ping` as an RBAC smoke route
+- [x] `npm run seed:admin -- <email> <password> [name]`
+- [x] `typecheck`, `lint`, and `build` pass
+- [x] 18 live checks pass (register, duplicate, validation, login failure,
+      me, missing/invalid token, token type confusion, RBAC deny/allow,
+      refresh rotation, reuse detection, logout revocation)
+- [ ] Close Phase 2 review
 
 **Scope note:** app scaffolding is intentionally deferred — `server/` is
 initialized at the start of Phase 1 and `client/` at the start of Phase 4, so
@@ -175,7 +205,7 @@ tooling is configured once, in context, instead of twice.
 |---|---|---|
 | 0 | GitHub repo + first push | done |
 | 1 | Express + TS scaffold, env config, DB connect, error middleware, `/health` | done |
-| 2 | Auth module, JWT, roles, protected routes | not started |
+| 2 | Auth module, JWT, roles, protected routes | done |
 | 3 | Category + product CRUD, search/filter/sort/pagination, seed script | not started |
 | 4 | Vite + React + Tailwind + Router + Query scaffold | not started |
 | 5 | Home, listing, details, search UI | not started |

@@ -28,9 +28,9 @@ ecommerce-platform/
 
 | Phase | Description | Status |
 |---|---|---|
-| 0 | Planning and architecture | In progress |
+| 0 | Planning and architecture | Complete |
 | 1 | Backend foundation | Complete |
-| 2 | Authentication and authorization | Not started |
+| 2 | Authentication and authorization | Complete |
 | 3 | Products and categories | Not started |
 | 4 | Frontend foundation | Not started |
 | 5 | Shopping experience | Not started |
@@ -97,6 +97,22 @@ curl http://localhost:5000/api/v1/health
 | `npm run typecheck` | TypeScript check, no output files |
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier write |
+| `npm run seed:admin -- <email> <password> [name]` | Create an admin or promote an existing user |
+
+### Authentication (Phase 2)
+
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/v1/auth/register` | public |
+| POST | `/api/v1/auth/login` | public |
+| POST | `/api/v1/auth/refresh` | refresh cookie |
+| POST | `/api/v1/auth/logout` | refresh cookie |
+| GET | `/api/v1/auth/me` | access token |
+| GET | `/api/v1/admin/ping` | admin access token |
+
+Access tokens live for 15 minutes and are sent as `Authorization: Bearer <token>`.
+The refresh token is stored in an httpOnly cookie and rotated on every refresh;
+reusing an old refresh token revokes the session.
 
 ## Author
 
