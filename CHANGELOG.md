@@ -36,6 +36,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **Phase 2** — `npm run seed:admin` script to create or promote an admin.
 - **Phase 2** — auth environment variables validated at startup; access and
   refresh secrets must be at least 32 characters and different.
+- **Phase 3** — `categories` collection with unique slug, optional parent,
+  description, active flag, and a self-referencing tree.
+- **Phase 3** — category admin CRUD with unique slug suffixes, hierarchy cycle
+  prevention, and delete guards for active children or products.
+- **Phase 3** — `products` collection with paise pricing, category reference,
+  URL images, stock, ratings, soft delete, and catalogue indexes.
+- **Phase 3** — product admin CRUD and `PATCH /products/:id/stock`.
+- **Phase 3** — public product search, category and price filters, rating and
+  in-stock filters, sorting, and pagination metadata.
+- **Phase 3** — query validation for filters, including `minPrice > maxPrice`
+  and unknown sort values.
+- **Phase 3** — idempotent `seed:catalog` script with three categories and six
+  products.
 
 ### Fixed
 
@@ -52,6 +65,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Refresh tokens are stored as SHA-256 hashes, never in plain text.
 - Refresh token reuse is treated as theft and clears the stored session.
 - Cloudinary uploads deferred to Phase 10; Phase 3 uses image URLs.
+- Catalogue slugs are generated from names and made unique with numeric suffixes.
+- Category deletion is blocked while active children or products exist.
+- Product search uses a MongoDB text index on name and description.
 
 ### Verified
 
@@ -60,4 +76,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   admin → admin route 200, garbage token 401, refresh token used as access
   token 401, refresh rotation 200, old token reuse 401, rotated token after
   reuse 401, logout 200, refresh after logout 401, server-side revocation 401.
-- `typecheck`, `lint`, and `build` pass.
+- Phase 3 live checks (34): public listing 200, anonymous/customer writes
+  401/403, category CRUD, duplicate-name slug suffixes, nested tree, cycle
+  rejection, product CRUD, validation 400, text search, category/price/rating
+  and in-stock filters, price sorting, pagination meta, stock update, soft
+  delete 404s, and category delete guards (409).
+- `seed:catalog` created 3 categories and 6 products, and a second run created
+  nothing (idempotent).
+- `typecheck`, `lint`, `format:check`, and `build` pass.

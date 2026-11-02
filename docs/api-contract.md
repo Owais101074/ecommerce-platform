@@ -1,8 +1,7 @@
 # API Contract
 
-Planned REST surface for the e-commerce platform. Treat this as the frozen
-contract the frontend is built against; changes require a note in
-`PROJECT_CONTEXT.md` and a `CHANGELOG.md` entry.
+Each endpoint marked with a phase is implemented as that phase completes.
+Phases 1–3 are live.
 
 ## Conventions
 
@@ -102,22 +101,47 @@ Phase 2.
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| GET | `/categories` | public | List categories (nested tree) |
+| GET | `/categories` | public | Active categories as a nested tree |
 | GET | `/categories/:slug` | public | Category detail |
-| POST | `/categories` | admin | Create |
-| PATCH | `/categories/:id` | admin | Update |
-| DELETE | `/categories/:id` | admin | Soft delete |
+| POST | `/categories` | admin | Create `{ name, description?, parentId? }` |
+| PATCH | `/categories/:id` | admin | Update name, description or parent |
+| DELETE | `/categories/:id` | admin | Soft delete; `409` if active children or products exist |
+
+Slugs are generated from the name. A duplicate name gets `-2`, `-3`, and so on.
+A category cannot be its own parent, and cycles in the hierarchy are rejected.
 
 ## Products — Phase 3
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| GET | `/products` | public | List with `q`, `category`, `minPrice`, `maxPrice`, `rating`, `inStock`, `sort`, pagination |
+| GET | `/products` | public | List with search, filters, sorting, pagination |
 | GET | `/products/:slug` | public | Detail |
 | POST | `/products` | admin | Create |
 | PATCH | `/products/:id` | admin | Update |
 | DELETE | `/products/:id` | admin | Soft delete |
-| PATCH | `/products/:id/stock` | admin | Set stock / adjust inventory |
+| PATCH | `/products/:id/stock` | admin | Set absolute stock `{ stock }` |
+
+List query parameters:
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `q` | string | Full-text search on name and description |
+| `category` | string | Category **slug** |
+| `minPrice` | integer | Paise, inclusive |
+| `maxPrice` | integer | Paise, inclusive |
+| `rating` | number | Minimum average rating, 0–5 |
+| `inStock` | `true` \| `false` | Only products with stock > 0 when `true` |
+| `sort` | enum | `price_asc`, `price_desc`, `newest` (default), `rating` |
+| `page` | integer | Default 1 |
+| `limit` | integer | Default 20, max 100 |
+
+Responses include `meta: { page, limit, total, totalPages }`. Product payloads
+include `rating: { average, count }` and a `category` summary
+`{ id, name, slug }`. Prices are integer paise. Images are URL strings in
+Phase 3; Cloudinary uploads arrive in Phase 10.
+
+Create body: `{ name, description, price, categoryId, images?, stock? }`.
+`images` defaults to `[]` and `stock` to `0`.
 
 ## Reviews — Phase 5 / 11
 

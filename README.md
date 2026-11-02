@@ -31,7 +31,7 @@ ecommerce-platform/
 | 0 | Planning and architecture | Complete |
 | 1 | Backend foundation | Complete |
 | 2 | Authentication and authorization | Complete |
-| 3 | Products and categories | Not started |
+| 3 | Products and categories | Complete |
 | 4 | Frontend foundation | Not started |
 | 5 | Shopping experience | Not started |
 | 6 | Cart and wishlist | Not started |
@@ -99,6 +99,7 @@ curl http://localhost:5000/api/v1/health
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier write |
 | `npm run seed:admin -- <email> <password> [name]` | Create an admin or promote an existing user |
+| `npm run seed:catalog` | Seed sample categories and products (idempotent) |
 
 ### Authentication (Phase 2)
 
@@ -114,6 +115,21 @@ curl http://localhost:5000/api/v1/health
 Access tokens live for 15 minutes and are sent as `Authorization: Bearer <token>`.
 The refresh token is stored in an httpOnly cookie and rotated on every refresh;
 reusing an old refresh token revokes the session.
+
+### Catalogue (Phase 3)
+
+| Method | Endpoint | Access |
+|---|---|---|
+| GET | `/api/v1/categories` | public |
+| GET | `/api/v1/categories/:slug` | public |
+| POST / PATCH / DELETE | `/api/v1/categories...` | admin |
+| GET | `/api/v1/products` | public |
+| GET | `/api/v1/products/:slug` | public |
+| POST / PATCH / DELETE | `/api/v1/products...` | admin |
+| PATCH | `/api/v1/products/:id/stock` | admin |
+
+`GET /api/v1/products` supports `q`, `category`, `minPrice`, `maxPrice`,
+`rating`, `inStock`, `sort`, `page`, and `limit`. Prices are integer paise.
 
 ## Author
 

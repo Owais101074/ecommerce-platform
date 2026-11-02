@@ -4,7 +4,7 @@
 > how it is architected, what each phase delivers, how every important workflow
 > runs, and how to explain it to anyone.
 >
-> Last updated: 2026-11-02 · Branch: `main` · Latest commit: `49f0fd7`
+> Last updated: 2026-11-02 · Branch: `main` · Latest phase: Phase 3
 > Repository: https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
@@ -38,9 +38,9 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Database | MongoDB 8.2 + Mongoose 9 |
 | Frontend | React + TypeScript + Vite + Tailwind + React Router + TanStack Query + Axios (**starts Phase 4**) |
 | Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 2 complete (auth + RBAC), awaiting review |
-| Completed phases | 0, 1, 2 |
-| Next phase | Phase 3 — Products and Categories |
+| Current phase | Phase 3 complete (catalogue + search), awaiting review |
+| Completed phases | 0, 1, 2, 3 |
+| Next phase | Phase 4 — React Frontend Foundation |
 | API base | `http://localhost:5000/api/v1` |
 | Database (dev) | `mongodb://127.0.0.1:27017/ecommerce_dev` |
 
@@ -87,10 +87,11 @@ previous phase is reviewed and approved with the exact phrase
 
 If asked "what is finished right now?", answer:
 
-> "Phases 0–2: the repository and architecture, the Express/TypeScript
-> foundation with health check and error handling, and the complete
-> authentication/RBAC module with 18 passing live checks. Phase 3, product and
-> category management, is next."
+> "Phases 0–3: the repository and architecture, the Express/TypeScript
+> foundation with health check and error handling, complete authentication and
+> RBAC with 18 passing checks, and the product/category catalogue with search,
+> filters, sorting, pagination and 34 passing checks. Phase 4, the React
+> frontend foundation, is next."
 
 ---
 
@@ -288,11 +289,28 @@ server/
     │   ├── admin/
     │   │   ├── admin.routes.ts
     │   │   └── admin.controller.ts
+    │   ├── categories/
+    │   │   ├── category.routes.ts
+    │   │   ├── category.controller.ts
+    │   │   ├── category.service.ts
+    │   │   ├── category.model.ts
+    │   │   ├── category.mapper.ts
+    │   │   ├── category.validation.ts
+    │   │   └── category.types.ts
+    │   ├── products/
+    │   │   ├── product.routes.ts
+    │   │   ├── product.controller.ts
+    │   │   ├── product.service.ts
+    │   │   ├── product.model.ts
+    │   │   ├── product.mapper.ts
+    │   │   ├── product.types.ts
+    │   │   └── product.validation.ts
     │   └── health/
     │       ├── health.routes.ts
     │       └── health.controller.ts
     ├── scripts/
-    │   └── seedAdmin.ts
+    │   ├── seedAdmin.ts
+    │   └── seedCatalog.ts
     ├── types/
     │   └── express.d.ts               Request.user augmentation
     └── utils/
@@ -367,12 +385,55 @@ Design notes:
 - Hiding sensitive fields with `select: false` prevents accidental leaks in any
   future endpoint that returns a user document.
 
-### 7.2 Planned collections
+### 7.2 Implemented — `categories` and `products`
+
+`categories`:
+
+| Field | Type | Notes |
+|---|---|---|
+| `_id` | ObjectId | Primary key |
+| `name` | string | 2–60 chars |
+| `slug` | string | unique, generated from name |
+| `description` | string \| null | up to 500 chars |
+| `parentId` | ObjectId \| null | self-reference to parent category |
+| `isActive` | boolean | soft delete |
+| `createdAt` / `updatedAt` | Date | timestamps |
+
+Indexes: `slug` unique, `(parentId, isActive)`.
+
+`products`:
+
+| Field | Type | Notes |
+|---|---|---|
+| `_id` | ObjectId | Primary key |
+| `name` | string | 2–120 chars |
+| `slug` | string | unique, generated from name |
+| `description` | string | 20–5000 chars |
+| `price` | number | integer paise, ≥ 0 |
+| `categoryId` | ObjectId | reference to `categories` |
+| `images` | string[] | URL strings, max 5 via API |
+| `stock` | number | integer, ≥ 0 |
+| `ratingAvg` | number | 0–5 aggregate, default 0 |
+| `ratingCount` | number | default 0 |
+| `isActive` | boolean | soft delete |
+| `createdAt` / `updatedAt` | Date | timestamps |
+
+Indexes: `slug` unique, `(categoryId, price)`, `createdAt` descending, text
+index on `name` and `description`.
+
+Catalogue rules:
+
+- Slugs are generated from names and made unique with `-2`, `-3` suffixes.
+- Products can only be created in an **active** category.
+- Category deletion returns 409 while active children or products exist.
+- Deletes are soft: public reads filter `isActive: true`.
+- Product responses include a category summary `{ id, name, slug }`.
+- Ratings are stored aggregates; actual review documents arrive in Phase 11.
+
+### 7.3 Planned collections
 
 | Collection | Key fields | Relationships / indexes |
 |---|---|---|
-| `categories` | name, slug, parentId, isActive | slug unique; self-referencing tree |
-| `products` | name, slug, description, price, categoryId, images, stock, ratingAvg, ratingCount | slug unique; indexes on categoryId, price, createdAt; text index on name/description |
 | `carts` | userId, items[{ productId, quantity, priceAtAdd }] | userId unique |
 | `wishlists` | userId, productIds[] | userId unique |
 | `addresses` | userId, label, line1, line2, city, state, pincode, phone, isDefault | index on userId |
@@ -381,7 +442,7 @@ Design notes:
 | `reviews` | userId, productId, rating, comment | unique (userId, productId) |
 | `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
 
-### 7.3 Relationship summary
+### 7.4 Relationship summary
 
 ```
 User 1─1 Cart
@@ -397,7 +458,7 @@ Order N─1 Coupon (optional)
 
 Every document reference is by ObjectId. Product/category public URLs use slugs.
 
-### 7.4 Data rules
+### 7.5 Data rules
 
 - **Prices are integers in paise.** ₹499.00 is stored as `49900`.
 - **Orders snapshot** product name, price and the delivery address.
@@ -437,12 +498,18 @@ invalid token, 403 wrong role, 404 not found, 409 duplicate, 422 business rule
 | POST | `/auth/logout` | refresh cookie | 200, revokes session, clears cookie |
 | GET | `/auth/me` | access token | 200, returns current user |
 | GET | `/admin/ping` | admin access token | 200, RBAC smoke test |
+| GET | `/categories` | public | 200, nested active category tree |
+| GET | `/categories/:slug` | public | 200, category detail |
+| POST/PATCH/DELETE | `/categories...` | admin | create, update, soft delete (204) |
+| GET | `/products` | public | 200, filtered/sorted/paginated list + meta |
+| GET | `/products/:slug` | public | 200, product detail |
+| POST/PATCH/DELETE | `/products...` | admin | create, update, soft delete (204) |
+| PATCH | `/products/:id/stock` | admin | set absolute stock |
 
 ### 8.3 Planned endpoints by phase
 
 | Phase | Endpoints |
 |---|---|
-| 3 | `/categories/*`, `/products/*` |
 | 5 | `GET/PATCH /users/me`, `PATCH /users/me/password` |
 | 6 | `/cart/*`, `/wishlist/*` |
 | 7 | `/addresses/*`, `POST /orders`, `GET /orders*` |
@@ -526,23 +593,32 @@ difference between 401 and 403.
 
 ---
 
-### Phase 3 — Product and Category Management — **PLANNED**
+### Phase 3 — Product and Category Management — **DONE**
 
 **Goal:** the catalogue.
 
-**Will deliver:**
-- `categories` module: name, slug, optional parent, active flag; public tree
-  listing; admin CRUD; soft delete.
-- `products` module: name, slug, description, price (paise), category, images
-  (URL strings), stock, rating aggregates; admin CRUD and stock endpoint.
-- Public listing with search `q`, category filter, price range, rating, in-stock,
-  sorting, pagination.
-- Text index on product name/description and compound indexes for filters.
-- Seed script with sample categories and products.
-- Slug generation and uniqueness handling.
+**Delivered:**
+- `categories` module: name, slug, optional parent, description, active flag;
+  public nested tree; admin CRUD; cycle prevention; delete guards.
+- `products` module: name, slug, description, price (paise), category, image
+  URLs, stock, rating aggregates; admin CRUD and stock endpoint.
+- Public listing with text search `q`, category slug, price range, rating,
+  in-stock, sorting (`price_asc`, `price_desc`, `newest`, `rating`), and
+  pagination with `meta`.
+- Indexes: unique slugs, `(categoryId, price)`, `createdAt`, and a text index
+  on product name/description.
+- Reusable `slugify` + unique-slug generator, query-validation middleware, and
+  query schemas.
+- Idempotent `seed:catalog` script: 3 categories and 6 products.
+- 34 live checks passed; typecheck, lint, format, and build pass.
 
-**Key concepts to learn:** query building, indexes, text search, pagination
-metadata, DTOs/mappers, validation of query strings, ObjectId references.
+**Be able to explain:** how slug collisions are resolved, why category deletion
+is blocked, how the product filter object is built, why `countDocuments` runs
+in parallel with the page query, and why text search needs an index.
+
+**Key concepts learned:** Mongoose query filters, `$text`, `$in`, `$gte/$lte`,
+whitelisted sort maps, pagination math, DTO mapping without leaking documents,
+Express 5 read-only `req.query` (hence `validatedQuery`).
 
 ---
 
@@ -891,6 +967,7 @@ Run it twice and put the values in `.env` as `JWT_ACCESS_SECRET` and
 | `npm run format` | Prettier write |
 | `npm run format:check` | Prettier check |
 | `npm run seed:admin -- <email> <password> [name]` | create/promote admin |
+| `npm run seed:catalog` | seed sample categories and products (idempotent) |
 
 ### Quick manual checks
 
@@ -946,6 +1023,21 @@ repeated in Postman; no Postman collection is committed.
 | 18 | Refresh token as access token | 401 |
 
 `typecheck`, `lint`, `format:check` and `build` all pass.
+
+### Verified Phase 3 results (34 checks)
+
+| Area | Checks |
+|---|---|
+| RBAC | anonymous write 401, customer write 403 |
+| Categories | create 201, duplicate slug `-2`, child creation, nested tree, cycle 400, detail by slug |
+| Products | create 201, duplicate slug, validation 400, detail, update, stock update |
+| Listing | pagination meta, text search, category filter, price range, ascending sort, in-stock filter |
+| Validation | `minPrice > maxPrice` 400, unknown sort 400 |
+| Deletion | category blocked 409 with products, empty child 204, product soft delete 404, category delete after cleanup 204 |
+| Seed | first run 3 categories + 6 products, second run created 0 |
+
+The development database currently contains the seeded catalogue: Electronics,
+Fashion and Home, with six products.
 
 ---
 
@@ -1146,6 +1238,27 @@ and add OpenAPI/Swagger generation from Zod schemas.
 Refresh rotation with reuse detection: coordinating JWT expiry, hashed storage,
 and session revocation without leaking which check failed.
 
+**Q39. How does product filtering work?**  
+A Mongoose filter object is built conditionally: `isActive: true`, optional
+`$text` search, `categoryId` from the category slug lookup, `price` with
+`$gte/$lte`, `ratingAvg` with `$gte`, and `stock > 0`. A whitelisted sort map
+prevents arbitrary field sorting. The same filter is used for `countDocuments`
+and the paginated `find`.
+
+**Q40. Why generate slugs instead of using ObjectIds in URLs?**  
+Slugs are readable and better for SEO (`/products/wireless-mouse`). The unique
+index guarantees no collision, and the `-2` suffix resolves duplicate names.
+
+**Q41. Why validate `req.query` into `validatedQuery` instead of assigning
+`req.query`?**  
+Express 5 defines `req.query` as a read-only getter. Parsed values are stored on
+a separate typed property so controllers receive numbers and booleans, not raw
+strings, without fighting the framework.
+
+**Q42. Why block category deletion instead of cascading?**  
+Cascading deletes could silently remove products and break order history.
+Returning 409 forces an explicit decision: move or deactivate products first.
+
 ### "Explain the project in a deeper 2 minutes"
 
 > "The repo is a monorepo with a React client and an Express API. The API is
@@ -1157,9 +1270,9 @@ and session revocation without leaking which check failed.
 > cookie; refresh rotates the token and detects replay. Authorization is
 > role-based. Errors flow through one handler and every response uses one
 > envelope. Phase 1 added the foundation and health check; Phase 2 added auth
-> and RBAC with 18 verified scenarios; Phase 3 will add the product catalogue
-> with search, filters, sorting and pagination, then Phase 4 starts the React
-> app."
+> and RBAC with 18 verified scenarios; Phase 3 added the catalogue: categories
+> with a nested tree, products with admin CRUD, text search, filters, sorting
+> and pagination, verified by 34 checks. Phase 4 starts the React app."
 
 ---
 
@@ -1195,6 +1308,8 @@ and session revocation without leaking which check failed.
 |---|---|---|
 | Frontend | Not started | Phase 4 |
 | Profile API | `/users/*` deferred | Phase 5 |
+| Product images | URL strings only, no upload | Cloudinary in Phase 10 |
+| Ratings | Aggregate fields exist but no review documents | Phase 11 |
 | Multi-device sessions | One refresh hash per user | Sessions collection later |
 | Automated tests | Manual checks only | Phase 11 |
 | Rate limiting | Not implemented | Phase 11 |
@@ -1211,9 +1326,8 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 3 — Product and Category Management. It will add category and product
-modules, admin CRUD, public search/filter/sort/pagination, indexes and seed
-data.
+Phase 4 — React Frontend Foundation: Vite, React, TypeScript, Tailwind, React
+Router, TanStack Query, Axios instance, layouts and auth context.
 
 Do not start until the reviewer explicitly says:
 

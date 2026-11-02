@@ -6,8 +6,8 @@ For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-02
-**Current phase:** Phase 2 — Authentication and Authorization (complete, awaiting review)
-**Completed phases:** Phase 0, Phase 1, Phase 2
+**Current phase:** Phase 3 — Product and Category Management (complete, awaiting review)
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -116,13 +116,19 @@ ecommerce-platform/
 | `reviews` | userId, productId, rating, comment | unique (userId, productId) |
 | `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
 
+**Implemented:** `users`, `categories`, `products`. The remaining collections are
+planned for Phases 6–10.
+
 ## 6. API surface
 
 Planned endpoints and conventions: [docs/api-contract.md](docs/api-contract.md).
 Marked complete here as each phase lands.
 
 **Implemented:** `/health` (Phase 1); `/auth/register`, `/auth/login`,
-`/auth/refresh`, `/auth/logout`, `/auth/me`, `/admin/ping` (Phase 2).
+`/auth/refresh`, `/auth/logout`, `/auth/me`, `/admin/ping` (Phase 2);
+`GET /categories`, `GET /categories/:slug`, category admin CRUD,
+`GET /products`, `GET /products/:slug`, product admin CRUD, and
+`PATCH /products/:id/stock` (Phase 3).
 User profile endpoints are deferred to Phase 5 with the account UI.
 
 ## 7. Environment
@@ -136,6 +142,7 @@ User profile endpoints are deferred to Phase 5 with the account UI.
 | API (dev) | http://localhost:5000/api/v1 |
 | Auth env | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12` |
 | Admin seed | `npm run seed:admin -- <email> <password> [name]` |
+| Catalog seed | `npm run seed:catalog` (idempotent) |
 | VS Code | 1.139.1 |
 | GitHub CLI | 2.103.3, authenticated as `Owais101074` (keyring) |
 | GitHub repo | `ecommerce-platform`, public, default branch `main` |
@@ -195,7 +202,27 @@ eslint-config-prettier 10, prettier 3, `@types/*` (incl. jsonwebtoken, cookie-pa
 - [x] 18 live checks pass (register, duplicate, validation, login failure,
       me, missing/invalid token, token type confusion, RBAC deny/allow,
       refresh rotation, reuse detection, logout revocation)
-- [ ] Close Phase 2 review
+- [x] Close Phase 2 review
+
+### Phase 3 — Product and Category Management
+
+- [x] `categories` collection: unique slug, optional parent, description,
+      active flag; self-referencing tree
+- [x] Category admin CRUD with slug generation, cycle prevention, and delete
+      guards for active children/products
+- [x] `products` collection: unique slug, price in paise, category reference,
+      URL images, stock, rating aggregates
+- [x] Indexes: slug unique, `(categoryId, price)`, `createdAt`, text index on
+      name/description
+- [x] Product admin CRUD plus `PATCH /:id/stock`
+- [x] Public listing with text search, category, price range, rating, in-stock,
+      sorting, and pagination metadata
+- [x] Query validation (unknown sort, `minPrice > maxPrice`, bad numbers → 400)
+- [x] `seed:catalog` idempotent sample data script
+- [x] `typecheck`, `lint`, `format:check`, and `build` pass
+- [x] 34 live checks pass (RBAC, CRUD, slug suffixes, tree, cycle, filters,
+      sorting, pagination, search, soft delete, delete guards)
+- [ ] Close Phase 3 review
 
 **Scope note:** app scaffolding is intentionally deferred — `server/` is
 initialized at the start of Phase 1 and `client/` at the start of Phase 4, so
@@ -208,7 +235,7 @@ tooling is configured once, in context, instead of twice.
 | 0 | GitHub repo + first push | done |
 | 1 | Express + TS scaffold, env config, DB connect, error middleware, `/health` | done |
 | 2 | Auth module, JWT, roles, protected routes | done |
-| 3 | Category + product CRUD, search/filter/sort/pagination, seed script | not started |
+| 3 | Category + product CRUD, search/filter/sort/pagination, seed script | done |
 | 4 | Vite + React + Tailwind + Router + Query scaffold | not started |
 | 5 | Home, listing, details, search UI | not started |
 | 6 | Cart + wishlist | not started |
