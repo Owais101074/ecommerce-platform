@@ -49,6 +49,25 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   and unknown sort values.
 - **Phase 3** — idempotent `seed:catalog` script with three categories and six
   products.
+- **Phase 4** — Vite 8 + React 19 + TypeScript 6 client with Tailwind CSS 4,
+  React Router 7, TanStack Query 5, and Axios.
+- **Phase 4** — typed API layer: shared response types, Axios instance with
+  credentials, Bearer injection, single-flight 401 refresh, and one
+  `ApiError` shape for the UI.
+- **Phase 4** — `AuthProvider` that restores the session from the refresh
+  cookie on load, exposes login/register/logout, and clears cached queries on
+  sign out.
+- **Phase 4** — route guards for signed-in (`/account`) and admin (`/admin`)
+  pages, with redirect-back after login.
+- **Phase 4** — app shell with responsive header, mobile navigation, footer,
+  sealed container, and a small UI kit (button, input, alert, badge, spinner,
+  skeleton, error state, page loader).
+- **Phase 4** — Home page with hero, live catalogue counters, category tiles,
+  and newest-product previews including loading and error states.
+- **Phase 4** — Login and register forms with client validation, server field
+  errors, and disabled/loading submit states.
+- **Phase 4** — Account page showing profile and how the session works, plus
+  an admin-only connectivity check.
 
 ### Fixed
 
@@ -68,6 +87,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Catalogue slugs are generated from names and made unique with numeric suffixes.
 - Category deletion is blocked while active children or products exist.
 - Product search uses a MongoDB text index on name and description.
+- Access tokens are held in memory only; localStorage is never used.
+- A 401 triggers one shared refresh call, then the original request retries.
+- Session bootstrap is deduplicated so React StrictMode's double effect cannot
+  invalidate a rotating refresh token.
+- Client data fetching goes through TanStack Query; no Redux.
+- Tailwind CSS 4 is wired through the `@tailwindcss/vite` plugin with design
+  tokens declared in `@theme`.
 
 ### Verified
 
@@ -83,4 +109,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   delete 404s, and category delete guards (409).
 - `seed:catalog` created 3 categories and 6 products, and a second run created
   nothing (idempotent).
-- `typecheck`, `lint`, `format:check`, and `build` pass.
+- Phase 4 browser checks: home renders 6 products and 3 categories from the
+  API, register creates a session and lands on `/account`, reload restores the
+  session through the refresh cookie, sign out clears it, guest `/account`
+  redirects to `/login` with a `from` state, login returns to `/account`,
+  wrong password shows "Invalid email or password", customer `/admin` is
+  blocked, admin `/admin` confirms via `/admin/ping`, unknown URLs show the 404
+  page, and an expired access token triggers a silent refresh then a successful
+  retry.
+- `typecheck`, `lint`, `format:check`, and `build` pass for both apps.
+- `npm audit --omit=dev` reports 0 vulnerabilities; the remaining moderate
+  advisories are in ESLint's `minimatch` dependency chain (dev only).

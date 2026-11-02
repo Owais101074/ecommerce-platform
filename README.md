@@ -16,8 +16,8 @@ clean architecture, TypeScript, and real-world backend practices.
 
 ```
 ecommerce-platform/
-├── client/   React application (initialized in Phase 4)
-├── server/   Express API (initialized in Phase 1)
+├── client/   React application (Phase 4)
+├── server/   Express API (Phase 1)
 ├── docs/     API contract and technical references
 ├── PROJECT_CONTEXT.md   Living project state (read this first)
 ├── CHANGELOG.md
@@ -32,7 +32,7 @@ ecommerce-platform/
 | 1 | Backend foundation | Complete |
 | 2 | Authentication and authorization | Complete |
 | 3 | Products and categories | Complete |
-| 4 | Frontend foundation | Not started |
+| 4 | Frontend foundation | Complete |
 | 5 | Shopping experience | Not started |
 | 6 | Cart and wishlist | Not started |
 | 7 | Checkout and addresses | Not started |
@@ -130,6 +130,43 @@ reusing an old refresh token revokes the session.
 
 `GET /api/v1/products` supports `q`, `category`, `minPrice`, `maxPrice`,
 `rating`, `inStock`, `sort`, `page`, and `limit`. Prices are integer paise.
+
+### Client (Phase 4)
+
+Start the API first, then the client in a second terminal:
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+The app starts at `http://localhost:5173` and calls `http://localhost:5000/api/v1`
+by default. Override it with `VITE_API_URL` in `client/.env` (see
+`client/.env.example`).
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | Type-check and build to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run typecheck` | TypeScript check, no output files |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier write |
+| `npm run format:check` | Prettier check |
+
+Client routes:
+
+| Route | Access | Purpose |
+|---|---|---|
+| `/` | public | Home with live category and product previews |
+| `/login` | public | Sign in |
+| `/register` | public | Create account |
+| `/account` | signed in | Profile and session details |
+| `/admin` | admin | Role-guarded connectivity check |
+
+The access token is kept in memory only; a reload restores the session through
+the httpOnly refresh cookie, and a 401 triggers one silent refresh and retry.
 
 ## Author
 

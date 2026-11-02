@@ -5,9 +5,9 @@ every phase. If chat context is lost, this file is the source of truth.
 For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
-**Last updated:** 2026-11-02
-**Current phase:** Phase 3 — Product and Category Management (complete, awaiting review)
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3
+**Last updated:** 2026-11-03
+**Current phase:** Phase 4 — React Frontend Foundation (complete, awaiting review)
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -51,15 +51,16 @@ state in a small AuthContext. No Redux.
 ecommerce-platform/
 ├── client/                       React app (Phase 4)
 │   └── src/
-│       ├── api/                  axios instance + typed endpoint functions
-│       ├── components/           ui/, layout/, product/, cart/
-│       ├── features/             auth/, products/, cart/, checkout/, orders/, admin/
+│       ├── api/                  http (axios) + session token store + errors + endpoint files
+│       ├── components/           ui/, layout/, product/
+│       ├── features/             auth/ (context, provider, hook)
 │       ├── hooks/                TanStack Query wrappers
-│       ├── lib/                  queryClient, formatters, constants
+│       ├── lib/                  env, queryClient, formatters, constants
 │       ├── pages/                route-level components
-│       ├── routes/               router + ProtectedRoute/AdminRoute
+│       ├── routes/               createBrowserRouter + RequireAuth/RequireAdmin
 │       ├── types/                shared API types
 │       ├── App.tsx
+│       ├── index.css             Tailwind entry + design tokens
 │       └── main.tsx
 ├── server/                       Express API (Phase 1)
 │   └── src/
@@ -98,6 +99,11 @@ ecommerce-platform/
 | Reviews | Compound unique index `(user, product)` | One review per customer per product |
 | Images | URL strings in Phase 3, Cloudinary in Phase 10 | Don't block product CRUD on a vendor |
 | Server state | TanStack Query | Caching, retries, loading states |
+| Client token storage | Access token in a module variable | Never readable by injected scripts; localStorage avoided |
+| Client refresh | 401 → one shared `/auth/refresh` call → retry once | Many parallel 401s cost one refresh |
+| Client session restore | Refresh cookie on app mount, deduplicated | StrictMode double effects cannot rotate twice |
+| Styling | Tailwind CSS 4 via `@tailwindcss/vite` with `@theme` tokens | No config file; tokens generate utilities |
+| Client routing | React Router 7 `createBrowserRouter` | Data-router ready for loaders later |
 | Cart/wishlist | Persisted server-side | Cross-device consistency |
 | Testing | Manual + Postman per phase; formal suite in Phase 11 | Learn behavior before automating |
 
@@ -131,6 +137,9 @@ Marked complete here as each phase lands.
 `PATCH /products/:id/stock` (Phase 3).
 User profile endpoints are deferred to Phase 5 with the account UI.
 
+**Client routes (Phase 4):** `/` (public), `/login`, `/register`, `/account`
+(signed in), `/admin` (admin), `*` (404). No new API endpoints were added.
+
 ## 7. Environment
 
 | Item | Value |
@@ -140,6 +149,8 @@ User profile endpoints are deferred to Phase 5 with the account UI.
 | npm | 10.9.2 |
 | MongoDB | 8.2 local, `mongodb://127.0.0.1:27017/ecommerce_dev` |
 | API (dev) | http://localhost:5000/api/v1 |
+| Client (dev) | http://localhost:5173, `VITE_API_URL` (default `http://localhost:5000/api/v1`) |
+| CORS | `CORS_ORIGIN=http://localhost:5173`, credentials enabled |
 | Auth env | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12` |
 | Admin seed | `npm run seed:admin -- <email> <password> [name]` |
 | Catalog seed | `npm run seed:catalog` (idempotent) |
@@ -154,7 +165,11 @@ User profile endpoints are deferred to Phase 5 with the account UI.
 bcryptjs 3, jsonwebtoken 9, cookie-parser 1.
 **server — dev:** typescript 6, tsx 4, eslint 10, typescript-eslint 8,
 eslint-config-prettier 10, prettier 3, `@types/*` (incl. jsonwebtoken, cookie-parser).
-**client:** none yet.
+**client — runtime:** react 19, react-dom 19, react-router-dom 7, @tanstack/react-query 5,
+axios 1.
+**client — dev:** vite 8, @vitejs/plugin-react 6, typescript 6, tailwindcss 4,
+@tailwindcss/vite 4, eslint 10, typescript-eslint 8, eslint-plugin-react-hooks 7,
+eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@types/*`.
 
 ## 9. Phase checklists
 
@@ -222,11 +237,30 @@ eslint-config-prettier 10, prettier 3, `@types/*` (incl. jsonwebtoken, cookie-pa
 - [x] `typecheck`, `lint`, `format:check`, and `build` pass
 - [x] 34 live checks pass (RBAC, CRUD, slug suffixes, tree, cycle, filters,
       sorting, pagination, search, soft delete, delete guards)
-- [ ] Close Phase 3 review
+- [x] Close Phase 3 review
 
-**Scope note:** app scaffolding is intentionally deferred — `server/` is
-initialized at the start of Phase 1 and `client/` at the start of Phase 4, so
-tooling is configured once, in context, instead of twice.
+### Phase 4 — React Frontend Foundation
+
+- [x] Vite 8 + React 19 + TypeScript 6 scaffold with strict compiler options
+- [x] Tailwind CSS 4 via `@tailwindcss/vite`, `@theme` design tokens, base layer
+- [x] ESLint 10 flat config + Prettier and the `@/` path alias
+- [x] Axios instance: env base URL, `withCredentials`, Bearer request header
+- [x] Single-flight 401 refresh with one retry; shared `ApiError` and field errors
+- [x] TanStack Query client defaults (stale time, no 4xx retries)
+- [x] `AuthProvider`: session bootstrap, login, register, logout, cache clearing
+- [x] `RequireAuth` and `RequireAdmin` guards with redirect-back after login
+- [x] App shell: responsive header, mobile menu, footer, container
+- [x] UI kit plus loading, error, empty and 404 states
+- [x] Home, login, register, account, admin and route-error pages
+- [x] `typecheck`, `lint`, `format:check`, and `build` pass
+- [x] Browser checks: live home data, register, reload restore, logout, guarded
+      redirect, login return, wrong password, customer vs admin, 404, and silent
+      refresh after expiry
+- [ ] Close Phase 4 review
+
+**Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
+at the start of Phase 4, so tooling is configured once, in context, instead of
+twice.
 
 ## 10. Pending tasks
 
@@ -236,7 +270,7 @@ tooling is configured once, in context, instead of twice.
 | 1 | Express + TS scaffold, env config, DB connect, error middleware, `/health` | done |
 | 2 | Auth module, JWT, roles, protected routes | done |
 | 3 | Category + product CRUD, search/filter/sort/pagination, seed script | done |
-| 4 | Vite + React + Tailwind + Router + Query scaffold | not started |
+| 4 | Vite + React + Tailwind + Router + Query scaffold | done |
 | 5 | Home, listing, details, search UI | not started |
 | 6 | Cart + wishlist | not started |
 | 7 | Addresses + checkout | not started |

@@ -4,7 +4,7 @@
 > how it is architected, what each phase delivers, how every important workflow
 > runs, and how to explain it to anyone.
 >
-> Last updated: 2026-11-02 · Branch: `main` · Latest phase: Phase 3
+> Last updated: 2026-11-03 · Branch: `main` · Latest phase: Phase 4
 > Repository: https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
@@ -36,12 +36,13 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Structure | Monorepo: `client/` + `server/`, independent `package.json` files, no npm workspaces |
 | Backend | Node.js 22, Express 5, TypeScript 6, REST, JWT, Zod 4 |
 | Database | MongoDB 8.2 + Mongoose 9 |
-| Frontend | React + TypeScript + Vite + Tailwind + React Router + TanStack Query + Axios (**starts Phase 4**) |
+| Frontend | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
 | Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 3 complete (catalogue + search), awaiting review |
-| Completed phases | 0, 1, 2, 3 |
-| Next phase | Phase 4 — React Frontend Foundation |
+| Current phase | Phase 4 complete (React foundation), awaiting review |
+| Completed phases | 0, 1, 2, 3, 4 |
+| Next phase | Phase 5 — Customer Shopping Experience |
 | API base | `http://localhost:5000/api/v1` |
+| Client base | `http://localhost:5173` |
 | Database (dev) | `mongodb://127.0.0.1:27017/ecommerce_dev` |
 
 ---
@@ -325,9 +326,45 @@ Each future backend module (products, categories, cart, orders, ...) follows the
 same shape: `*.routes.ts`, `*.controller.ts`, `*.service.ts`, `*.model.ts`,
 `*.validation.ts`, optional `*.types.ts` and `*.mapper.ts`.
 
-### Planned client tree
+### Current client tree
 
-See section 4.6. `client/` currently contains only `.gitkeep`.
+```
+client/
+├── .env.example              VITE_API_URL
+├── eslint.config.js          flat config
+├── .prettierrc.json
+├── index.html
+├── public/favicon.svg
+├── tsconfig.json             strict, bundler resolution, @/ alias
+├── vite.config.ts            React + Tailwind plugins, alias, port 5173
+└── src/
+    ├── api/
+    │   ├── http.ts           axios instance, Bearer, 401 refresh + retry
+    │   ├── session.ts        in-memory access token, expiry listeners
+    │   ├── errors.ts         ApiError, field error mapping
+    │   ├── auth.api.ts       login, register, refresh, logout, me
+    │   └── catalog.api.ts    products, categories, admin ping
+    ├── components/
+    │   ├── layout/           Header, Footer, Container, AppLayout
+    │   ├── product/          ProductCard, CategoryCard
+    │   └── ui/               Button, button-styles, Input, Alert, Badge,
+    │                         Spinner, Skeleton, ErrorState, PageLoader
+    ├── features/auth/        auth-context, AuthProvider, useAuth
+    ├── hooks/                useProducts, useCategories, useAdminPing,
+    │                         useDocumentTitle
+    ├── lib/                  env, queryClient, format, constants
+    ├── pages/                Home, Login, Register, Account, Admin, NotFound,
+    │                         RouteError
+    ├── routes/               router.tsx, guards.tsx
+    ├── types/                api, auth, catalog
+    ├── App.tsx
+    ├── index.css             Tailwind + @theme tokens
+    ├── main.tsx
+    └── vite-env.d.ts
+```
+
+`features/products`, `cart`, `checkout`, `orders` and `admin` folders arrive with
+their phases; Phase 4 keeps auth in `features/` and catalogue hooks in `hooks/`.
 
 ---
 
@@ -352,6 +389,11 @@ See section 4.6. `client/` currently contains only `.gitkeep`.
 | Reviews | Unique `(userId, productId)` index | One review per customer per product |
 | Images | URLs in Phase 3, Cloudinary in Phase 10 | Product CRUD is not blocked on a vendor |
 | Frontend state | TanStack Query + small AuthContext | Server state vs session state separation |
+| Client token storage | Access token in a module variable | Never in localStorage, so injected scripts cannot read it |
+| Client refresh | One shared refresh promise, then retry once | Parallel 401s trigger a single rotation |
+| Session restore | Refresh cookie on app mount, deduplicated | Survives reload without StrictMode double-rotation |
+| Styling | Tailwind 4 with `@theme` tokens | Design tokens generate utilities; no JS config |
+| Routing | React Router 7 data router | Guards and future loaders in one place |
 | Cart/wishlist | Stored server-side | Cross-device consistency |
 | Testing | Manual/Postman per phase, suite in Phase 11 | Learn behavior before automating |
 | Docker | Phase 12 | Core behaviour first, packaging later |
@@ -622,19 +664,46 @@ Express 5 read-only `req.query` (hence `validatedQuery`).
 
 ---
 
-### Phase 4 — React Frontend Foundation — **PLANNED**
+### Phase 4 — React Frontend Foundation — **DONE**
 
 **Goal:** a typed frontend shell that talks to the API.
 
-**Will deliver:**
-- Vite + React + TypeScript + Tailwind setup.
-- React Router with public and protected routes.
-- Axios instance with base URL, credentials, token attachment, and
-  401 → refresh → retry logic.
-- TanStack Query client and provider.
-- Layouts, navbar, footer, loading and error components.
-- AuthContext for session state.
-- Shared API response types mirroring the backend envelope.
+**Delivered:**
+- Vite 8 + React 19 + TypeScript 6 client; Tailwind 4 through
+  `@tailwindcss/vite`; `@theme` tokens for brand, ink and accent colours.
+- Path alias `@/`, strict compiler options, ESLint 10 flat config, Prettier.
+- Typed API layer: response envelope types, `ApiError` with status and field
+  errors, `http` axios instance (`withCredentials`, env base URL, Bearer).
+- Response interceptor: on 401 it performs one shared refresh and retries the
+  original request once; auth endpoints are excluded to avoid loops.
+- Access token kept in a module variable; the refresh token stays in the
+  httpOnly cookie, so a reload restores the session.
+- Deduplicated session bootstrap so React StrictMode cannot rotate twice.
+- `AuthProvider` (status `loading` / `authenticated` / `guest`) exposing
+  `login`, `register`, `logout`; logout clears the query cache.
+- React Router 7 routes with `RequireAuth` and `RequireAdmin` guards and
+  redirect-back after login.
+- App shell: responsive header with mobile menu, footer, container.
+- UI kit: button, input, alert, badge, spinner, skeleton, error state, loader.
+- Pages: Home (hero, live counters, categories, newest products), Login,
+  Register, Account, Admin, 404, route error.
+- TanStack Query hooks: products, categories, admin ping; defaults skip retries
+  on 4xx and cache for 60 seconds.
+
+**Verification:** typecheck, lint, format check and build pass; browser checks
+covered registration, reload restore, logout, guarded redirect, login return,
+wrong password, customer vs admin, 404 and silent refresh after expiry.
+
+**Be able to explain:** why the access token is not in localStorage, how the
+401 refresh-and-retry interceptor works, why the refresh promise is shared,
+why session bootstrap is deduplicated under StrictMode, how `RequireAuth`
+preserves the intended destination, why TanStack Query holds server state, and
+how the envelope types keep the client aligned with the API.
+
+**Key concepts learned:** React context with a typed value, controlled forms
+with server field errors, `createBrowserRouter`, `Navigate` state, Axios
+interceptors, module-level mutable state, `useQuery` loading/error states,
+Tailwind 4 theme configuration, TypeScript generics over API envelopes.
 
 ---
 
@@ -931,6 +1000,17 @@ cp .env.example .env        # Windows CMD: copy .env.example .env
 npm run dev                 # tsx watch on port 5000
 ```
 
+Second terminal, from the repository root:
+
+```bash
+cd client
+npm install
+npm run dev                 # Vite on http://localhost:5173
+```
+
+The client reads `VITE_API_URL`; without a `client/.env` it falls back to
+`http://localhost:5000/api/v1`.
+
 Generate real secrets (never commit them):
 
 ```bash
@@ -968,6 +1048,17 @@ Run it twice and put the values in `.env` as `JWT_ACCESS_SECRET` and
 | `npm run format:check` | Prettier check |
 | `npm run seed:admin -- <email> <password> [name]` | create/promote admin |
 | `npm run seed:catalog` | seed sample categories and products (idempotent) |
+
+Client commands (`cd client`):
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | type-check then build to `dist/` |
+| `npm run preview` | serve the production build |
+| `npm run typecheck` | TypeScript, no emit |
+| `npm run lint` | ESLint |
+| `npm run format` / `format:check` | Prettier write / check |
 
 ### Quick manual checks
 
@@ -1038,6 +1129,26 @@ repeated in Postman; no Postman collection is committed.
 
 The development database currently contains the seeded catalogue: Electronics,
 Fashion and Home, with six products.
+
+### Verified Phase 4 results (browser)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Home renders live counters, categories and products | 6 products, 3 departments |
+| 2 | Register with valid data | session created, lands on `/account` |
+| 3 | Reload `/account` | session restored from the refresh cookie |
+| 4 | Sign out | session cleared, redirect to `/login` |
+| 5 | Guest visits `/account` | redirected to `/login` with `from` state |
+| 6 | Login after redirect | returns to `/account` |
+| 7 | Wrong password | "Invalid email or password" alert |
+| 8 | Customer visits `/admin` | "Admins only" panel, API never called |
+| 9 | Admin visits `/admin` | `Admin access granted` from `/admin/ping` |
+| 10 | Unknown URL | 404 page with title and home link |
+| 11 | Expired access token (3s TTL test) | `/admin/ping` 401 → refresh 200 → retry 200 |
+| 12 | Console | no React warnings or errors |
+
+Test accounts were removed afterwards; the client build and both test suites
+(typecheck, lint, format, build) pass.
 
 ---
 
@@ -1260,6 +1371,32 @@ strings, without fighting the framework.
 Cascading deletes could silently remove products and break order history.
 Returning 409 forces an explicit decision: move or deactivate products first.
 
+**Q43. Why keep the access token in memory instead of localStorage?**  
+localStorage is readable by any script running on the page, so one XSS bug
+leaks a usable token. An in-memory token disappears on reload, and the session
+is rebuilt from the httpOnly refresh cookie that JavaScript cannot read.
+
+**Q44. How does the 401 refresh-and-retry interceptor work?**  
+Every response passes through an interceptor. On 401 (except on auth routes) it
+sets a `_retried` flag, awaits one shared refresh promise, updates the
+Authorization header and replays the request. If the refresh fails, listeners
+clear the session and the user becomes a guest.
+
+**Q45. Why share a single refresh promise between parallel requests?**  
+Refresh tokens rotate. If three queries 401 at once and each refreshes, two of
+them would use an already-invalidated token and the backend would treat it as
+reuse. One promise means one rotation for the whole page.
+
+**Q46. Why is session bootstrap deduplicated?**  
+React StrictMode runs effects twice in development. Two bootstraps would send
+the same refresh cookie twice; the second would look like token reuse and clear
+the session. A module-level promise makes both effect runs await one request.
+
+**Q47. What is the difference between server state and session state here?**  
+Server state (products, categories, ping) is cached, retried and invalidated by
+TanStack Query. Session state (who is signed in) lives in a small context and
+changes only on login, refresh or logout.
+
 ### "Explain the project in a deeper 2 minutes"
 
 > "The repo is a monorepo with a React client and an Express API. The API is
@@ -1273,7 +1410,10 @@ Returning 409 forces an explicit decision: move or deactivate products first.
 > envelope. Phase 1 added the foundation and health check; Phase 2 added auth
 > and RBAC with 18 verified scenarios; Phase 3 added the catalogue: categories
 > with a nested tree, products with admin CRUD, text search, filters, sorting
-> and pagination, verified by 34 checks. Phase 4 starts the React app."
+> and pagination, verified by 34 checks. Phase 4 adds the React foundation:
+> a typed Axios layer with silent token refresh, an auth context that restores
+> the session from the httpOnly cookie, guarded routes, a responsive app shell,
+> and live catalogue data on the home page."
 
 ---
 
@@ -1307,8 +1447,10 @@ Returning 409 forces an explicit decision: move or deactivate products first.
 
 | Area | Limitation | Plan |
 |---|---|---|
-| Frontend | Not started | Phase 4 |
+| Frontend depth | Home preview only; no listing, detail or search pages yet | Phase 5 |
 | Profile API | `/users/*` deferred | Phase 5 |
+| Client tests | Manual browser checks only | Phase 11 |
+| UI verification | No screenshots captured; in-app browser had no viewport | Visual pass in Phase 5 |
 | Product images | URL strings only, no upload | Cloudinary in Phase 10 |
 | Ratings | Aggregate fields exist but no review documents | Phase 11 |
 | Multi-device sessions | One refresh hash per user | Sessions collection later |
@@ -1327,8 +1469,9 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 4 — React Frontend Foundation: Vite, React, TypeScript, Tailwind, React
-Router, TanStack Query, Axios instance, layouts and auth context.
+Phase 5 — Customer Shopping Experience: product listing with search, filters,
+sorting and pagination, product detail pages, category pages, and the profile
+endpoints (`/users/me`) with their screens.
 
 Do not start until the reviewer explicitly says:
 
