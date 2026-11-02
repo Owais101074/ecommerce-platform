@@ -1073,6 +1073,7 @@ Fashion and Home, with six products.
 | `c5b8dd2` | docs: mark phase 1 complete and document server setup |
 | `a686772` | refactor(server): remove unused ApiError flag |
 | `49f0fd7` | feat(auth): add JWT authentication and role-based access |
+| `1639558` | feat(catalog): add category and product management |
 
 ---
 
