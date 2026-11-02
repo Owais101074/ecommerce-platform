@@ -4,9 +4,10 @@ Living state document. Read this before starting any work; update it at the end 
 every phase. If chat context is lost, this file is the source of truth.
 
 **Last updated:** 2026-11-02
-**Current phase:** Phase 0 — Planning and Architecture
-**Completed phases:** none
-**Git branch:** `main`
+**Current phase:** Phase 0 — Planning and Architecture (complete, awaiting review)
+**Completed phases:** Phase 0
+**Git branch:** `main` (tracking `origin/main`)
+**Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
 
@@ -122,7 +123,8 @@ Marked complete here as each phase lands.
 | npm | 10.9.2 |
 | MongoDB | 8.2 local, `mongodb://127.0.0.1:27017/ecommerce_dev` |
 | VS Code | 1.139.1 |
-| GitHub CLI | 2.103.3 |
+| GitHub CLI | 2.103.3, authenticated as `Owais101074` (keyring) |
+| GitHub repo | `ecommerce-platform`, public, default branch `main` |
 | Docker | not installed (Phase 12) |
 
 ## 8. Installed dependencies
@@ -137,8 +139,8 @@ None yet. Added per phase and recorded here.
 - [x] Define folder structure
 - [x] Design database collections
 - [x] Design API contract
-- [ ] Create GitHub repository `ecommerce-platform`
-- [ ] Initial commit and push
+- [x] Create GitHub repository `ecommerce-platform` (public)
+- [x] Initial commit `53b113e` and push to `origin/main`
 - [ ] Close Phase 0 review
 
 **Scope note:** app scaffolding is intentionally deferred — `server/` is
@@ -149,7 +151,7 @@ tooling is configured once, in context, instead of twice.
 
 | Phase | Task | Status |
 |---|---|---|
-| 0 | GitHub repo + first push | pending auth |
+| 0 | GitHub repo + first push | done |
 | 1 | Express + TS scaffold, env config, DB connect, error middleware, `/health` | not started |
 | 2 | Auth module, JWT, roles, protected routes | not started |
 | 3 | Category + product CRUD, search/filter/sort/pagination, seed script | not started |

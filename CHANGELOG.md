@@ -13,6 +13,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **Phase 0** — `PROJECT_CONTEXT.md` for cross-session continuity.
 - **Phase 0** — planned API contract in `docs/api-contract.md`.
 - **Phase 0** — root tooling files: `.gitignore`, `.gitattributes`, `.nvmrc`.
+- **Phase 0** — public GitHub repository created at
+  https://github.com/Owais101074/ecommerce-platform and initial commit pushed.
 
 ### Decisions
 
