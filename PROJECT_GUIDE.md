@@ -693,6 +693,7 @@ Express 5 read-only `req.query` (hence `validatedQuery`).
 **Verification:** typecheck, lint, format check and build pass; browser checks
 covered registration, reload restore, logout, guarded redirect, login return,
 wrong password, customer vs admin, 404 and silent refresh after expiry.
+Commit `0e6367f`.
 
 **Be able to explain:** why the access token is not in localStorage, how the
 401 refresh-and-retry interceptor works, why the refresh promise is shared,
