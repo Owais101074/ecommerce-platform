@@ -4,7 +4,7 @@
 > how it is architected, what each phase delivers, how every important workflow
 > runs, and how to explain it to anyone.
 >
-> Last updated: 2026-11-04 · Branch: `main` · Latest phase: Phase 4 + UI refresh
+> Last updated: 2026-11-04 · Branch: `main` · Latest phase: Phase 5
 > Repository: https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
@@ -38,9 +38,9 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Database | MongoDB 8.2 + Mongoose 9 |
 | Frontend | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
 | Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 4 complete (React foundation + storefront UI refresh), awaiting review |
-| Completed phases | 0, 1, 2, 3, 4 |
-| Next phase | Phase 5 — Customer Shopping Experience |
+| Current phase | Phase 5 complete (catalogue, product detail, departments, profile), awaiting review |
+| Completed phases | 0, 1, 2, 3, 4, 5 |
+| Next phase | Phase 6 — Cart and Wishlist |
 | API base | `http://localhost:5000/api/v1` |
 | Client base | `http://localhost:5173` |
 | Database (dev) | `mongodb://127.0.0.1:27017/ecommerce_dev` |
@@ -578,12 +578,14 @@ invalid token, 403 wrong role, 404 not found, 409 duplicate, 422 business rule
 | GET | `/products/:slug` | public | 200, product detail |
 | POST/PATCH/DELETE | `/products...` | admin | create, update, soft delete (204) |
 | PATCH | `/products/:id/stock` | admin | set absolute stock |
+| GET | `/users/me` | access token | 200, current profile |
+| PATCH | `/users/me` | access token | update name, returns the user |
+| PATCH | `/users/me/password` | access token | verify current password, revoke sessions, clear cookie |
 
 ### 8.3 Planned endpoints by phase
 
 | Phase | Endpoints |
 |---|---|
-| 5 | `GET/PATCH /users/me`, `PATCH /users/me/password` |
 | 6 | `/cart/*`, `/wishlist/*` |
 | 7 | `/addresses/*`, `POST /orders`, `GET /orders*` |
 | 8 | `/payments/orders`, `/payments/verify`, `/payments/webhook` |
@@ -766,18 +768,55 @@ Tailwind 4 theme configuration, TypeScript generics over API envelopes.
 
 ---
 
-### Phase 5 — Customer Shopping Experience — **PLANNED**
+### Phase 5 — Customer Shopping Experience — **DONE**
 
-**Goal:** browse and discover products.
+**Goal:** browse and discover products, and manage the account profile.
 
-**Will deliver:**
-- Homepage with featured products and categories.
-- Product listing with search, filters, sorting and pagination.
-- Product details page with images, stock and reviews summary.
-- Category pages.
-- Responsive design for mobile and desktop.
-- Profile read/update and password change endpoints (`/users/me`), deferred
-  from Phase 2, built with the account screens that use them.
+**Delivered:**
+- `users` module with `GET /users/me`, `PATCH /users/me` and
+  `PATCH /users/me/password`, all behind `authenticate`.
+- Profile name validation (2–50 characters) with the refreshed user DTO
+  returned to the client context.
+- Password change: verify the current password, reject reuse of the old one,
+  re-hash with bcrypt, clear the stored refresh hash/expiry, clear the refresh
+  cookie, and ask the client to sign in again.
+- Catalogue at `/products`: search, department, price range in rupees (sent as
+  paise), rating, in-stock and sort controls; filters live in the URL; active
+  filter chips; result count; skeleton, error and empty states; pagination.
+- Product detail at `/products/:slug`: breadcrumbs, image gallery with
+  thumbnails and fallback, stock badge and count, exact price, rating summary
+  from stored aggregates, service notes and related products from the same
+  department.
+- Department page at `/categories/:slug`: hero, child departments, sort,
+  product grid, pagination and links to the other departments.
+- Account page: editable full name, read-only email, password change with
+  confirm-password validation, and a re-login notice forwarded through the
+  route guard to `/login`.
+- Shared `Select`, `Pagination`, `Breadcrumbs` and `StockBadge`; `useProduct`
+  and `useCategory` hooks; catalogue links in the header, home CTAs, category
+  cards and product cards.
+- Responsive layouts across the new pages (mobile filter toggle, stacked hero,
+  fluid grids).
+
+**Verification:** server live checks covered profile read/update, validation,
+wrong-current-password rejection, old-password rejection, successful change,
+refresh-cookie revocation, and old vs new password login. Browser checks covered
+listing, filters, sorting, search, chip removal, product detail, unknown slugs,
+department pages, profile update and the full password-change re-login flow.
+`typecheck`, `lint`, `format:check` and `build` pass for both apps. The in-app
+browser again reported a 0×0 hidden viewport, so screenshots and pointer clicks
+were unavailable; structure and behaviour were checked through DOM snapshots,
+DOM-triggered interactions, console and network logs. Commit `5878956`.
+
+**Be able to explain:** why filters belong in the URL, how rupee inputs map to
+integer paise, why the catalogue query is memoised, how the password change
+invalidates every session, why the login notice is forwarded through the guard,
+and why ratings are read from aggregates instead of a reviews collection yet.
+
+**Key concepts learned:** `useSearchParams` as state, derived query objects with
+`useMemo`, optional query hooks (`enabled`), controlled filter drafts syncing to
+the URL, redirect state across guards, React context updates after a mutation,
+and validating business rules (password reuse) in the service layer.
 
 ---
 
@@ -1531,10 +1570,11 @@ changes only on login, refresh or logout.
 
 | Area | Limitation | Plan |
 |---|---|---|
-| Frontend depth | Home preview only; no listing, detail or search pages yet | Phase 5 |
-| Profile API | `/users/*` deferred | Phase 5 |
+| Frontend depth | Catalogue, detail, department and account screens are built; no cart or checkout UI yet | Phase 6 |
+| Profile API | Name and password only; email changes and avatar upload are not built | Later |
 | Client tests | Manual browser checks only | Phase 11 |
-| UI verification | No screenshots captured; in-app browser had no viewport | Visual pass in Phase 5 |
+| UI verification | No screenshots captured; in-app browser had no viewport | Re-check visuals when a real browser is available |
+| Catalogue images | One image per seeded product, so the gallery is exercised by code but not by sample data | Add more images in Phase 10 |
 | Product images | URL strings only, no upload | Cloudinary in Phase 10 |
 | Ratings | Aggregate fields exist but no review documents | Phase 11 |
 | Multi-device sessions | One refresh hash per user | Sessions collection later |
@@ -1553,9 +1593,9 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 5 — Customer Shopping Experience: product listing with search, filters,
-sorting and pagination, product detail pages, category pages, and the profile
-endpoints (`/users/me`) with their screens.
+Phase 6 — Cart and Wishlist: server-side carts with quantity and price-at-add
+snapshots, stock validation, wishlist add/remove/list, and the client mutations
+(TanStack Query) that drive the shopping UI.
 
 Do not start until the reviewer explicitly says:
 

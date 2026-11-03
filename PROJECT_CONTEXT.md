@@ -6,9 +6,9 @@ For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-04
-**Current phase:** Phase 4 — React Frontend Foundation (complete, awaiting review)
-**Latest work:** storefront UI refresh (design system, shell, auth layout, pages)
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4
+**Current phase:** Phase 5 — Customer Shopping Experience (complete, awaiting review)
+**Latest work:** catalogue, product detail, department pages, profile and password screens
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -103,6 +103,9 @@ ecommerce-platform/
 | Client token storage | Access token in a module variable | Never readable by injected scripts; localStorage avoided |
 | Client refresh | 401 → one shared `/auth/refresh` call → retry once | Many parallel 401s cost one refresh |
 | Client session restore | Refresh cookie on app mount, deduplicated | StrictMode double effects cannot rotate twice |
+| Catalogue state | URL search params (`q`, `category`, `min`, `max`, `rating`, `inStock`, `sort`, `page`) | Filters are shareable, reload-safe and back-button friendly |
+| Password change | Verify current password, reject reuse, revoke refresh session, clear cookie | A changed password invalidates every existing session |
+| Login redirect notice | Guard forwards a notice code to `/login` | The re-login reason survives the auth redirect |
 | Styling | Tailwind CSS 4 via `@tailwindcss/vite` with `@theme` tokens | No config file; tokens generate utilities |
 | Visual design | Warm editorial palette (cream/paper, forest green, terracotta), Fraunces + Plus Jakarta Sans, lucide-react icons | A curated-store feel, not a default dashboard; all tokens live in `index.css` |
 | Client routing | React Router 7 `createBrowserRouter` | Data-router ready for loaders later |
@@ -136,11 +139,13 @@ Marked complete here as each phase lands.
 `/auth/refresh`, `/auth/logout`, `/auth/me`, `/admin/ping` (Phase 2);
 `GET /categories`, `GET /categories/:slug`, category admin CRUD,
 `GET /products`, `GET /products/:slug`, product admin CRUD, and
-`PATCH /products/:id/stock` (Phase 3).
-User profile endpoints are deferred to Phase 5 with the account UI.
+`PATCH /products/:id/stock` (Phase 3); `GET /users/me`, `PATCH /users/me`,
+`PATCH /users/me/password` (Phase 5).
 
-**Client routes (Phase 4):** `/` (public), `/login`, `/register`, `/account`
-(signed in), `/admin` (admin), `*` (404). No new API endpoints were added.
+**Client routes:** `/` (public), `/products`, `/products/:slug`,
+`/categories/:slug`, `/login`, `/register`, `/account` (signed in), `/admin`
+(admin), `*` (404). Catalogue filters are URL-driven (`q`, `category`, `min`,
+`max`, `rating`, `inStock`, `sort`, `page`).
 
 ## 7. Environment
 
@@ -267,7 +272,29 @@ eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@type
 - [x] UI refresh: curated Unsplash product photos in `seed:catalog` and the dev DB
 - [x] UI refresh: browser re-check of auth, admin, 404 and footer states;
       typecheck, lint and build pass
-- [ ] Close Phase 4 review
+- [x] Close Phase 4 review
+
+### Phase 5 — Customer Shopping Experience
+
+- [x] `users` module: `GET /users/me`, `PATCH /users/me`, `PATCH /users/me/password`
+- [x] Profile name validation (2–50) and refreshed user DTO
+- [x] Password change verifies the current password, rejects the old password,
+      re-hashes, revokes the refresh session and clears the cookie
+- [x] Catalogue `/products`: URL-driven search, department, price, rating and
+      in-stock filters, sort, filter chips, result count and pagination
+- [x] Product detail `/products/:slug`: gallery, breadcrumbs, stock, price,
+      rating summary, service notes and related products
+- [x] Department `/categories/:slug`: hero, child departments, sort and pagination
+- [x] Shared `Select`, `Pagination`, `Breadcrumbs`, `StockBadge`; `useProduct`
+      and `useCategory` hooks
+- [x] Account page: editable name, read-only email, password change, re-login
+      notice forwarded through the route guard
+- [x] Header, home CTAs and catalogue cards link into the new routes
+- [x] Server live checks for profile, password and session revocation
+- [x] Browser checks for listing, filters, search, detail, department,
+      profile update and password change; no React console errors
+- [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
+- [ ] Close Phase 5 review
 
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
@@ -283,7 +310,7 @@ twice.
 | 3 | Category + product CRUD, search/filter/sort/pagination, seed script | done |
 | 4 | Vite + React + Tailwind + Router + Query scaffold | done |
 | 4 | Storefront UI refresh (design system, shell, auth layout, pages) | done |
-| 5 | Home, listing, details, search UI | not started |
+| 5 | Catalogue listing, product detail, department pages, profile + password UI | done |
 | 6 | Cart + wishlist | not started |
 | 7 | Addresses + checkout | not started |
 | 8 | Razorpay integration | not started |

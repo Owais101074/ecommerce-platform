@@ -81,11 +81,25 @@ Access tokens are returned in the JSON body and sent as `Authorization: Bearer`.
 |---|---|---|---|
 | GET | `/admin/ping` | admin | Verifies JWT authentication and role checks |
 
-## Users — deferred
+## Users — Phase 5
 
-Profile read/update and password change are planned for Phase 5, together with
-the account screens that consume them. They are intentionally not part of
-Phase 2.
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
+| GET | `/users/me` | auth | Current profile |
+| PATCH | `/users/me` | auth | Update `{ name }` (2–50 characters) |
+| PATCH | `/users/me/password` | auth | Change password `{ currentPassword, newPassword }` |
+
+The profile response is the same `user` shape used by `/auth/me`
+(`id`, `name`, `email`, `role`, `createdAt`). Email is read-only in Phase 5.
+
+Password change rules:
+
+- `currentPassword` must match the stored hash, otherwise `400`.
+- `newPassword` must be 8–72 characters and different from the current
+  password, otherwise `400`.
+- On success the new hash is stored, the refresh token hash and expiry are
+  cleared, the refresh cookie is cleared, and the response message asks the
+  client to sign in again.
 
 ## Addresses — Phase 7
 
@@ -143,7 +157,11 @@ Phase 3; Cloudinary uploads arrive in Phase 10.
 Create body: `{ name, description, price, categoryId, images?, stock? }`.
 `images` defaults to `[]` and `stock` to `0`.
 
-## Reviews — Phase 5 / 11
+## Reviews — Phase 11
+
+Product cards and detail pages currently show stored `ratingAvg` / `ratingCount`
+aggregates. Review documents and endpoints arrive with the testing and security
+phase; no review API exists yet.
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|

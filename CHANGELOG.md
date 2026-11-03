@@ -84,6 +84,27 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **UI refresh** — lucide-react icons across the shell and forms.
 - **UI refresh** — curated Unsplash product photos in `seed:catalog`, and the
   same URLs applied to the six existing development products.
+- **Phase 5** — `users` module with `GET /users/me`, `PATCH /users/me` and
+  `PATCH /users/me/password`, all behind the access-token guard.
+- **Phase 5** — profile updates validate the name (2–50 characters) and return
+  the refreshed user DTO.
+- **Phase 5** — password change verifies the current password, rejects reuse of
+  the old password, re-hashes with bcrypt, clears the stored refresh hash and
+  expiry, and clears the refresh cookie.
+- **Phase 5** — catalogue page at `/products` with URL-driven search, department,
+  price, rating, in-stock and sort filters, removable filter chips, result
+  counts, empty/error/skeleton states and pagination.
+- **Phase 5** — product detail page at `/products/:slug` with an image gallery,
+  breadcrumbs, stock, exact price, rating summary, service notes and related
+  products from the same department.
+- **Phase 5** — department page at `/categories/:slug` with a hero, child
+  departments, sort control, product grid and pagination.
+- **Phase 5** — account page now edits the profile name (read-only email) and
+  changes the password, then signs out with a notice on the login page.
+- **Phase 5** — shared `Select`, `Pagination`, `Breadcrumbs` and `StockBadge`
+  primitives, plus `useProduct` and `useCategory` query hooks.
+- **Phase 5** — header, home CTAs, category cards and product cards now link into
+  the catalogue, product and department routes.
 
 ### Fixed
 
@@ -117,6 +138,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Login and register sit in a full-screen split layout outside the store shell,
   so authentication gets a focused surface without duplicating the app chrome.
 - Icons come from lucide-react instead of hand-drawn SVGs.
+- Catalogue filters live in the URL, so search, sort, filters and page are
+  shareable and survive reloads; rupee inputs convert to integer paise.
+- Product detail pages reuse the stored rating aggregates; review documents are
+  still deferred to Phase 11.
+- A password change revokes the refresh session and signs the user out
+  everywhere; the login page explains why through a redirect notice.
 
 ### Verified
 
@@ -149,6 +176,23 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   signed in, and unknown URLs render the 404 page.
 - UI refresh console check: no React warnings or errors; the only 401 is the
   expected `/auth/refresh` probe made while the visitor is a guest.
+- Phase 5 API live checks: register 201, `GET /users/me` 200, anonymous request
+  401, invalid name 400, valid name update 200 with email unchanged, wrong
+  current password 400, reusing the old password 400, successful change 200,
+  refresh with the revoked cookie 401, login with the old password 401, login
+  with the new password 200.
+- Phase 5 browser checks: catalogue shows all six products, category + in-stock
+  + price sorting returns the two electronics in ascending order, search and
+  chip removal rewrite the URL, product detail renders breadcrumbs, price,
+  stock, gallery fallback, "no ratings yet" and related products, unknown
+  product and category slugs show their error states, profile update refreshes
+  the header name and shows a success alert, a wrong current password shows the
+  API message, and a successful password change lands on `/login` with the
+  re-login notice.
+- Phase 5 network log: `PATCH /users/me` 200, password 400 then 200, logout 200,
+  old password login 401, new password login 200. Console has no React errors.
+- `typecheck`, `lint`, `format:check`, and `build` pass for both apps; the
+  client build reports only the expected single-chunk size advisory.
 - `typecheck`, `lint`, `format:check`, and `build` pass for both apps.
 - Browser screenshots and scroll offsets could not be captured because the
   in-app browser reported a 0×0 hidden viewport; layout was verified through DOM

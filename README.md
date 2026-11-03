@@ -33,7 +33,7 @@ ecommerce-platform/
 | 2 | Authentication and authorization | Complete |
 | 3 | Products and categories | Complete |
 | 4 | Frontend foundation + storefront UI refresh | Complete |
-| 5 | Shopping experience | Not started |
+| 5 | Customer shopping experience | Complete |
 | 6 | Cart and wishlist | Not started |
 | 7 | Checkout and addresses | Not started |
 | 8 | Payments | Not started |
@@ -131,6 +131,18 @@ reusing an old refresh token revokes the session.
 `GET /api/v1/products` supports `q`, `category`, `minPrice`, `maxPrice`,
 `rating`, `inStock`, `sort`, `page`, and `limit`. Prices are integer paise.
 
+### Profile (Phase 5)
+
+| Method | Endpoint | Access |
+|---|---|---|
+| GET | `/api/v1/users/me` | access token |
+| PATCH | `/api/v1/users/me` | access token |
+| PATCH | `/api/v1/users/me/password` | access token |
+
+`PATCH /users/me` updates the name. `PATCH /users/me/password` verifies the
+current password, rejects reuse of the old password, hashes the new one, revokes
+the stored refresh session and clears the refresh cookie.
+
 ### Client (Phase 4)
 
 Start the API first, then the client in a second terminal:
@@ -160,9 +172,12 @@ Client routes:
 | Route | Access | Purpose |
 |---|---|---|
 | `/` | public | Home with live category and product previews |
+| `/products` | public | Catalogue with search, filters, sorting and pagination |
+| `/products/:slug` | public | Product gallery, price, stock, ratings and related items |
+| `/categories/:slug` | public | Department hero with its products |
 | `/login` | public | Sign in |
 | `/register` | public | Create account |
-| `/account` | signed in | Profile and session details |
+| `/account` | signed in | Editable profile, password change and session details |
 | `/admin` | admin | Role-guarded connectivity check |
 
 The access token is kept in memory only; a reload restores the session through
