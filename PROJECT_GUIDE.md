@@ -4,7 +4,7 @@
 > how it is architected, what each phase delivers, how every important workflow
 > runs, and how to explain it to anyone.
 >
-> Last updated: 2026-11-03 · Branch: `main` · Latest phase: Phase 4
+> Last updated: 2026-11-04 · Branch: `main` · Latest phase: Phase 4 + UI refresh
 > Repository: https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
@@ -38,7 +38,7 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Database | MongoDB 8.2 + Mongoose 9 |
 | Frontend | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
 | Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 4 complete (React foundation), awaiting review |
+| Current phase | Phase 4 complete (React foundation + storefront UI refresh), awaiting review |
 | Completed phases | 0, 1, 2, 3, 4 |
 | Next phase | Phase 5 — Customer Shopping Experience |
 | API base | `http://localhost:5000/api/v1` |
@@ -208,7 +208,7 @@ Why: the frontend checks one shape everywhere; no ad-hoc parsing per endpoint.
 Stack traces are only included for 5xx errors in development. 5xx errors are
 logged; 4xx errors are not, because they are normal client mistakes.
 
-### 4.6 Frontend architecture (planned, Phase 4+)
+### 4.6 Frontend architecture (implemented in Phase 4)
 
 ```
 src/
@@ -228,7 +228,35 @@ src/
 - Session state lives in a small AuthContext.
 - Axios instance attaches the access token and handles 401 → refresh → retry.
 - No Redux: there is little global client state.
-- Access token kept in memory, refresh token in the httpOnly cookie (planned).
+- Access token kept in memory, refresh token in the httpOnly cookie.
+
+### 4.6.1 Visual design system
+
+The storefront deliberately avoids a stock dashboard look:
+
+| Layer | Choice |
+|---|---|
+| Surfaces | Cream `#faf7f1` and paper `#fffdf9` |
+| Brand | Deep forest green (`brand-800` / `brand-900`) |
+| Accent | Terracotta (`accent-500` / `accent-600`) |
+| Display type | Fraunces (serif, headings) |
+| Body type | Plus Jakarta Sans (UI, prose) |
+| Icons | lucide-react |
+| Motion | `animate-rise`, `animate-float`, shimmer skeletons, reduced-motion override |
+
+All colours, fonts and shadows are declared with `@theme` in
+`client/src/index.css`; utilities such as `surface`, `dot-grid`, `skeleton`,
+`animate-rise` and `reveal-*` build on those tokens. Shared primitives live in
+`client/src/components/ui/`, so pages compose `Button`, `Input`,
+`PasswordInput`, `Badge`, `Alert`, `ErrorState`, `BrandMark` and
+`SectionHeading` instead of ad-hoc classes.
+
+Layout split:
+
+- `AppLayout` = announcement bar, sticky header, `ScrollManager`, page outlet,
+  footer.
+- `AuthLayout` = full-screen two-column split used by `/login` and `/register`,
+  outside `AppLayout`, with the session model explained on the green panel.
 
 ### 4.7 Security model
 
@@ -345,10 +373,12 @@ client/
     │   ├── auth.api.ts       login, register, refresh, logout, me
     │   └── catalog.api.ts    products, categories, admin ping
     ├── components/
-    │   ├── layout/           Header, Footer, Container, AppLayout
+    │   ├── layout/           Header, Footer, Container, AppLayout,
+    │   │                     AuthLayout, ScrollManager
     │   ├── product/          ProductCard, CategoryCard
-    │   └── ui/               Button, button-styles, Input, Alert, Badge,
-    │                         Spinner, Skeleton, ErrorState, PageLoader
+    │   └── ui/               Button, button-styles, Input, PasswordInput,
+    │                         Alert, Badge, Spinner, Skeleton, ErrorState,
+    │                         PageLoader, BrandMark, SectionHeading
     ├── features/auth/        auth-context, AuthProvider, useAuth
     ├── hooks/                useProducts, useCategories, useAdminPing,
     │                         useDocumentTitle
@@ -393,6 +423,7 @@ their phases; Phase 4 keeps auth in `features/` and catalogue hooks in `hooks/`.
 | Client refresh | One shared refresh promise, then retry once | Parallel 401s trigger a single rotation |
 | Session restore | Refresh cookie on app mount, deduplicated | Survives reload without StrictMode double-rotation |
 | Styling | Tailwind 4 with `@theme` tokens | Design tokens generate utilities; no JS config |
+| Visual direction | Warm editorial palette, Fraunces + Plus Jakarta Sans, lucide icons | A curated shop feel that still scales to admin screens |
 | Routing | React Router 7 data router | Guards and future loaders in one place |
 | Cart/wishlist | Stored server-side | Cross-device consistency |
 | Testing | Manual/Postman per phase, suite in Phase 11 | Learn behavior before automating |
@@ -694,6 +725,33 @@ Express 5 read-only `req.query` (hence `validatedQuery`).
 covered registration, reload restore, logout, guarded redirect, login return,
 wrong password, customer vs admin, 404 and silent refresh after expiry.
 Commit `0e6367f`.
+
+#### UI refresh (after Phase 4 verification)
+
+**Goal:** make the foundation feel like a curated store before Phase 5.
+
+**Delivered:**
+- Warm editorial tokens in `index.css`: cream/paper surfaces, forest-green
+  brand, terracotta accent, Fraunces + Plus Jakarta Sans, soft/lift shadows,
+  shimmer skeletons and reduced-motion overrides.
+- New shared primitives: `BrandMark`, `PasswordInput` (show/hide with
+  `aria-pressed`), `SectionHeading`; refreshed `Button`, `Badge`, `Input`,
+  `Alert`, `ErrorState`, `PageLoader` and `Skeleton`.
+- Shell: announcement bar, sticky cream header, hash-aware nav, accessible
+  mobile menu, branded footer with live session links, and `ScrollManager`.
+- Full-screen split `AuthLayout` for login and register, moved outside
+  `AppLayout` without changing guards or redirect behaviour.
+- Redesigned Home (hero, categories, manifesto, new arrivals, account CTA),
+  Account, Admin, 404 and route-error pages.
+- lucide-react icons and curated Unsplash photos for the six seeded products,
+  applied to both the seed script and the existing development documents.
+
+**Verification:** typecheck, lint and build pass; browser checks re-ran
+registration, validation, password toggle, logout, login, wrong password,
+admin promotion and `/admin/ping`, footer auth state, and the 404 page. The
+in-app browser reported a 0×0 hidden viewport, so screenshots and scroll
+offsets were not available; structure and computed styles were checked through
+DOM snapshots instead.
 
 **Be able to explain:** why the access token is not in localStorage, how the
 401 refresh-and-retry interceptor works, why the refresh promise is shared,
@@ -1150,6 +1208,28 @@ Fashion and Home, with six products.
 
 Test accounts were removed afterwards; the client build and both test suites
 (typecheck, lint, format, build) pass.
+
+### Verified UI refresh results (browser)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Home data and media | 3 category cards, 4 new-arrival cards, all product images loaded at 900px width |
+| 2 | Fonts and surfaces | Fraunces + Plus Jakarta Sans loaded; body background `rgb(250, 247, 241)` |
+| 3 | Empty register submit | name, email and password errors shown; form not sent |
+| 4 | Password toggle | `password` → `text` → `password`, label and `aria-pressed` update |
+| 5 | Register valid data | 201, session created, lands on `/account` as customer |
+| 6 | Sign out | cookie cleared, redirect to `/login` |
+| 7 | Empty login submit | email and password required errors, both fields `aria-invalid` |
+| 8 | Wrong password | "Invalid email or password" alert |
+| 9 | Valid login | returns to `/account` |
+| 10 | Admin promotion + reload | role shows ADMIN; `/admin` shows "Admin access granted" from `/admin/ping` |
+| 11 | Footer while signed in | account link, plus admin console link for admins; no guest links |
+| 12 | Unknown URL | 404 page with store and new-arrivals links |
+| 13 | Console | no React warnings or errors; only the expected guest `/auth/refresh` 401 |
+| 14 | Screenshots / scroll offsets | unavailable: in-app browser reported a 0×0 hidden viewport |
+
+The UI test user was deleted from MongoDB after the run. The only API request
+added by this refresh was the existing session bootstrap; no endpoints changed.
 
 ---
 

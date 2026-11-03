@@ -1,5 +1,7 @@
 import { isRouteErrorResponse, Link, useRouteError } from 'react-router-dom';
+import { RotateCcw, TriangleAlert } from 'lucide-react';
 import { Container } from '@/components/layout/Container';
+import { Button } from '@/components/ui/Button';
 import { buttonStyles } from '@/components/ui/button-styles';
 
 export function RouteErrorPage() {
@@ -13,14 +15,27 @@ export function RouteErrorPage() {
 
   return (
     <Container className="py-24 text-center">
-      <p className="text-sm font-bold tracking-widest text-red-600 uppercase">Something broke</p>
-      <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink-900">
-        This page could not be rendered
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-100">
+        <TriangleAlert className="h-7 w-7" aria-hidden="true" />
+      </div>
+      <p className="mt-6 text-[11px] font-bold tracking-[0.2em] text-red-600 uppercase">
+        Something broke
+      </p>
+      <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-ink-900">
+        This page could not be rendered.
       </h1>
-      <p className="mx-auto mt-2 max-w-md text-sm text-ink-500">{message}</p>
-      <Link to="/" className={`mt-6 ${buttonStyles()}`}>
-        Back to home
-      </Link>
+      <pre className="mx-auto mt-4 max-w-md overflow-auto rounded-xl border border-ink-200 bg-paper px-4 py-3 text-left text-xs whitespace-pre-wrap text-ink-600">
+        <code>{message}</code>
+      </pre>
+      <div className="mt-7 flex flex-wrap justify-center gap-3">
+        <Link to="/" className={buttonStyles()}>
+          Back to home
+        </Link>
+        <Button variant="secondary" onClick={() => window.location.reload()}>
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          Reload page
+        </Button>
+      </div>
     </Container>
   );
 }

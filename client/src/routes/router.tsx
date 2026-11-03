@@ -19,14 +19,6 @@ export const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
-        path: 'login',
-        element: <LoginPage />,
-      },
-      {
-        path: 'register',
-        element: <RegisterPage />,
-      },
-      {
         path: 'account',
         element: (
           <RequireAuth>
@@ -47,5 +39,15 @@ export const router = createBrowserRouter([
         element: <NotFoundPage />,
       },
     ],
+  },
+  {
+    path: 'login',
+    element: <LoginPage />,
+    errorElement: <RouteErrorPage />,
+  },
+  {
+    path: 'register',
+    element: <RegisterPage />,
+    errorElement: <RouteErrorPage />,
   },
 ]);

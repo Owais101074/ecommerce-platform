@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { ShieldCheck } from 'lucide-react';
 import { getErrorMessage, getFieldErrors } from '@/api/errors';
-import { Container } from '@/components/layout/Container';
+import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useAuth } from '@/features/auth/useAuth';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
@@ -78,76 +80,72 @@ export function RegisterPage() {
   }
 
   return (
-    <Container className="flex justify-center py-14 sm:py-20">
-      <div className="w-full max-w-md">
-        <div className="surface surface-shadow p-6 sm:p-8">
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">
-            Create your account
-          </h1>
-          <p className="mt-1 text-sm text-ink-500">
-            One account for your profile, orders and saved items.
-          </p>
+    <AuthLayout
+      title="Create your account."
+      subtitle="One account for your profile today, and for carts, orders and saved items as the store grows."
+      footer={
+        <>
+          Already registered?{' '}
+          <Link to="/login" className="font-semibold text-brand-800 hover:underline">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        {formError && <Alert variant="error">{formError}</Alert>}
 
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
-            {formError && <Alert variant="error">{formError}</Alert>}
+        <Input
+          label="Full name"
+          name="name"
+          autoComplete="name"
+          placeholder="Owais Khan"
+          value={name}
+          error={errors.name}
+          onChange={(event) => setName(event.target.value)}
+        />
 
-            <Input
-              label="Full name"
-              name="name"
-              autoComplete="name"
-              placeholder="Owais Khan"
-              value={name}
-              error={errors.name}
-              onChange={(event) => setName(event.target.value)}
-            />
+        <Input
+          label="Email"
+          type="email"
+          name="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          error={errors.email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
 
-            <Input
-              label="Email"
-              type="email"
-              name="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              error={errors.email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
+        <PasswordInput
+          label="Password"
+          name="password"
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          hint="Use 8–72 characters."
+          value={password}
+          error={errors.password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
 
-            <Input
-              label="Password"
-              type="password"
-              name="password"
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              hint="Use 8–72 characters."
-              value={password}
-              error={errors.password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+        <PasswordInput
+          label="Confirm password"
+          name="confirmPassword"
+          autoComplete="new-password"
+          placeholder="Repeat your password"
+          value={confirmPassword}
+          error={errors.confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+        />
 
-            <Input
-              label="Confirm password"
-              type="password"
-              name="confirmPassword"
-              autoComplete="new-password"
-              placeholder="Repeat your password"
-              value={confirmPassword}
-              error={errors.confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-            />
+        <Button type="submit" fullWidth size="lg" loading={submitting}>
+          {submitting ? 'Creating account…' : 'Create account'}
+        </Button>
 
-            <Button type="submit" fullWidth loading={submitting}>
-              {submitting ? 'Creating account…' : 'Create account'}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-ink-500">
-            Already registered?{' '}
-            <Link to="/login" className="font-semibold text-brand-700 hover:underline">
-              Sign in
-            </Link>
-          </p>
-        </div>
-      </div>
-    </Container>
+        <p className="flex items-start gap-2 text-xs leading-relaxed text-ink-500">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden="true" />
+          Passwords are hashed with bcrypt before they ever reach the database.
+        </p>
+      </form>
+    </AuthLayout>
   );
 }

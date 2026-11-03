@@ -1,3 +1,4 @@
+import { RotateCcw, TriangleAlert } from 'lucide-react';
 import { Button } from './Button';
 
 interface ErrorStateProps {
@@ -8,24 +9,21 @@ interface ErrorStateProps {
 
 export function ErrorState({ title = 'Something went wrong', message, onRetry }: ErrorStateProps) {
   return (
-    <div className="surface surface-shadow px-6 py-10 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
-          <path
-            d="M12 8v5m0 3.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
+    <div className="surface relative overflow-hidden px-6 py-12 text-center shadow-soft">
+      <div className="dot-grid absolute inset-0 opacity-60" aria-hidden="true" />
+      <div className="relative">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600 ring-1 ring-red-100">
+          <TriangleAlert className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <h2 className="mt-5 font-display text-2xl font-semibold text-ink-900">{title}</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-500">{message}</p>
+        {onRetry && (
+          <Button variant="secondary" className="mt-6" onClick={onRetry}>
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Try again
+          </Button>
+        )}
       </div>
-      <h2 className="mt-4 text-lg font-semibold text-ink-900">{title}</h2>
-      <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">{message}</p>
-      {onRetry && (
-        <Button variant="secondary" className="mt-5" onClick={onRetry}>
-          Try again
-        </Button>
-      )}
     </div>
   );
 }

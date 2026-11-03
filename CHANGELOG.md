@@ -68,12 +68,30 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   errors, and disabled/loading submit states.
 - **Phase 4** — Account page showing profile and how the session works, plus
   an admin-only connectivity check.
+- **UI refresh** — warm editorial design system: cream and paper surfaces,
+  forest-green brand, terracotta accent, Fraunces display type and Plus Jakarta
+  Sans body type, shared shadows, motion and skeleton tokens.
+- **UI refresh** — new shared primitives (`BrandMark`, `PasswordInput`,
+  `SectionHeading`) plus refreshed buttons, badges, inputs, alerts, loaders and
+  error states.
+- **UI refresh** — storefront shell with announcement bar, sticky cream header,
+  accessible mobile menu, branded footer, and a `ScrollManager` for hash anchors
+  and scroll-to-top navigation.
+- **UI refresh** — full-screen split `AuthLayout` for `/login` and `/register`,
+  with the session model explained alongside the form.
+- **UI refresh** — redesigned Home, Account, Admin, 404 and route-error pages,
+  using live catalogue data with loading, error and empty states.
+- **UI refresh** — lucide-react icons across the shell and forms.
+- **UI refresh** — curated Unsplash product photos in `seed:catalog`, and the
+  same URLs applied to the six existing development products.
 
 ### Fixed
 
 - **Phase 1** — TypeScript 6 rejects `moduleResolution: node`; switched to
   `nodenext` while still emitting CommonJS.
 - **Phase 1** — dotenv 18 startup banner suppressed with `quiet: true`.
+- **UI refresh** — the footer kept showing "Sign in" and "Create account" while
+  signed in; it now renders account (and admin) links from the live session.
 
 ### Decisions
 
@@ -94,6 +112,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Client data fetching goes through TanStack Query; no Redux.
 - Tailwind CSS 4 is wired through the `@tailwindcss/vite` plugin with design
   tokens declared in `@theme`.
+- The storefront uses a warm editorial palette (cream, forest green, terracotta)
+  with Fraunces display type to feel like a curated shop rather than a dashboard.
+- Login and register sit in a full-screen split layout outside the store shell,
+  so authentication gets a focused surface without duplicating the app chrome.
+- Icons come from lucide-react instead of hand-drawn SVGs.
 
 ### Verified
 
@@ -117,6 +140,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   blocked, admin `/admin` confirms via `/admin/ping`, unknown URLs show the 404
   page, and an expired access token triggers a silent refresh then a successful
   retry.
+- UI refresh browser checks: home renders the curated product photos, both
+  fonts load, the mobile menu opens and closes, register validation blocks an
+  empty form, the password visibility toggle switches `password` ↔ `text`,
+  registration lands on `/account`, sign out returns to `/login`, login rejects
+  an empty form and a wrong password, the promoted test admin reaches `/admin`
+  with a live `/admin/ping` success, the footer switches to account links when
+  signed in, and unknown URLs render the 404 page.
+- UI refresh console check: no React warnings or errors; the only 401 is the
+  expected `/auth/refresh` probe made while the visitor is a guest.
 - `typecheck`, `lint`, `format:check`, and `build` pass for both apps.
+- Browser screenshots and scroll offsets could not be captured because the
+  in-app browser reported a 0×0 hidden viewport; layout was verified through DOM
+  snapshots, computed styles, and interaction checks instead.
 - `npm audit --omit=dev` reports 0 vulnerabilities; the remaining moderate
   advisories are in ESLint's `minimatch` dependency chain (dev only).

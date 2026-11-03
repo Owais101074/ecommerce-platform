@@ -38,11 +38,13 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
 
   if (!isAdmin) {
     return (
-      <Container className="py-16">
-        <ErrorState
-          title="Admins only"
-          message="Your account does not have permission to view this page."
-        />
+      <Container className="py-20">
+        <div className="mx-auto max-w-xl">
+          <ErrorState
+            title="Admins only"
+            message="Your account does not have permission to view this page."
+          />
+        </div>
       </Container>
     );
   }

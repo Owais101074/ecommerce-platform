@@ -7,7 +7,7 @@ clean architecture, TypeScript, and real-world backend practices.
 
 | Layer | Technology |
 |---|---|
-| Frontend | React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, Axios |
+| Frontend | React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, Axios, lucide-react |
 | Backend | Node.js, Express, TypeScript, REST, JWT, Zod |
 | Database | MongoDB + Mongoose |
 | Tooling | Git, GitHub CLI, ESLint, Prettier, Postman |
@@ -32,7 +32,7 @@ ecommerce-platform/
 | 1 | Backend foundation | Complete |
 | 2 | Authentication and authorization | Complete |
 | 3 | Products and categories | Complete |
-| 4 | Frontend foundation | Complete |
+| 4 | Frontend foundation + storefront UI refresh | Complete |
 | 5 | Shopping experience | Not started |
 | 6 | Cart and wishlist | Not started |
 | 7 | Checkout and addresses | Not started |
@@ -167,6 +167,22 @@ Client routes:
 
 The access token is kept in memory only; a reload restores the session through
 the httpOnly refresh cookie, and a 401 triggers one silent refresh and retry.
+
+### Design system
+
+The storefront uses a warm editorial look rather than a default dashboard theme:
+
+- Cream and paper surfaces with warm ink neutrals.
+- Deep forest green for brand actions and terracotta for accents.
+- Fraunces for display headings, Plus Jakarta Sans for UI and body text.
+- Shared colour, shadow and motion tokens declared in `@theme` inside
+  `client/src/index.css`.
+- lucide-react icons in the shell, forms and state components.
+- Login and register render as a full-screen split layout outside the store
+  shell; the left panel explains the session model.
+
+Pages compose the shared UI kit in `client/src/components/ui/` instead of
+one-off styles.
 
 ## Author
 

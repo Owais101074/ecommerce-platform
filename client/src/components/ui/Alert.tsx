@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CircleAlert, CircleCheck, Info } from 'lucide-react';
 
 type AlertVariant = 'error' | 'success' | 'info';
 
@@ -8,20 +9,37 @@ interface AlertProps {
   children: ReactNode;
 }
 
-const variantClasses: Record<AlertVariant, string> = {
-  error: 'border-red-200 bg-red-50 text-red-800',
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  info: 'border-brand-200 bg-brand-50 text-brand-800',
-};
+const styles = {
+  error: {
+    wrapper: 'border-red-200 bg-red-50/80 text-red-900',
+    icon: 'text-red-600',
+    Icon: CircleAlert,
+  },
+  success: {
+    wrapper: 'border-brand-200 bg-brand-50/80 text-brand-900',
+    icon: 'text-brand-600',
+    Icon: CircleCheck,
+  },
+  info: {
+    wrapper: 'border-ink-200 bg-paper text-ink-800',
+    icon: 'text-ink-500',
+    Icon: Info,
+  },
+} as const;
 
 export function Alert({ variant = 'error', title, children }: AlertProps) {
+  const { wrapper, icon, Icon } = styles[variant];
+
   return (
     <div
       role={variant === 'error' ? 'alert' : 'status'}
-      className={`rounded-xl border px-4 py-3 text-sm ${variantClasses[variant]}`}
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${wrapper}`}
     >
-      {title && <p className="font-semibold">{title}</p>}
-      <div className={title ? 'mt-0.5' : ''}>{children}</div>
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${icon}`} aria-hidden="true" />
+      <div>
+        {title && <p className="font-semibold">{title}</p>}
+        <div className={title ? 'mt-0.5' : ''}>{children}</div>
+      </div>
     </div>
   );
 }

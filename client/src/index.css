@@ -2,33 +2,44 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 
-  --color-brand-50: #eef4ff;
-  --color-brand-100: #dbe6ff;
-  --color-brand-200: #bcd2ff;
-  --color-brand-300: #93b4ff;
-  --color-brand-400: #678eff;
-  --color-brand-500: #4368f5;
-  --color-brand-600: #2f4bdc;
-  --color-brand-700: #263cb4;
-  --color-brand-800: #24358f;
-  --color-brand-900: #223072;
+  --color-cream: #faf7f1;
+  --color-paper: #fffdf9;
 
-  --color-ink-50: #f7f8fa;
-  --color-ink-100: #eef0f4;
-  --color-ink-200: #dde1e9;
-  --color-ink-300: #bcc3d1;
-  --color-ink-400: #8d97ab;
-  --color-ink-500: #6a748a;
-  --color-ink-600: #515a6e;
-  --color-ink-700: #414959;
-  --color-ink-800: #2c3340;
-  --color-ink-900: #171b24;
+  --color-ink-50: #f7f4ee;
+  --color-ink-100: #efe9df;
+  --color-ink-200: #e2d9cb;
+  --color-ink-300: #c9bcaa;
+  --color-ink-400: #a4957f;
+  --color-ink-500: #7d6f5c;
+  --color-ink-600: #5f5345;
+  --color-ink-700: #4a4034;
+  --color-ink-800: #2f2820;
+  --color-ink-900: #1c1712;
 
-  --color-accent-100: #fff0d6;
-  --color-accent-400: #ffb454;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  --color-brand-50: #eef6f0;
+  --color-brand-100: #d7ebdd;
+  --color-brand-200: #b0d7bd;
+  --color-brand-300: #7fbb95;
+  --color-brand-400: #4f9a70;
+  --color-brand-500: #2f7d55;
+  --color-brand-600: #206345;
+  --color-brand-700: #1a5039;
+  --color-brand-800: #16402f;
+  --color-brand-900: #123527;
+
+  --color-accent-50: #fdf2ea;
+  --color-accent-100: #fae0d0;
+  --color-accent-200: #f4c0a5;
+  --color-accent-300: #eb9a75;
+  --color-accent-400: #df7449;
+  --color-accent-500: #cb5428;
+  --color-accent-600: #ae421e;
+  --color-accent-700: #8d341a;
+
+  --shadow-soft: 0 1px 2px rgb(28 23 18 / 0.04), 0 14px 40px -20px rgb(28 23 18 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(28 23 18 / 0.05), 0 30px 60px -30px rgb(28 23 18 / 0.3);
 }
 
 @layer base {
@@ -38,33 +49,127 @@
   }
 
   body {
-    @apply bg-ink-50 font-sans text-ink-900;
+    @apply bg-cream font-sans text-ink-900;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
   }
 
   ::selection {
-    @apply bg-brand-200 text-brand-900;
+    @apply bg-accent-200 text-ink-900;
   }
 
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-500;
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-cream);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-ink-300);
+    border: 3px solid var(--color-cream);
+    border-radius: 999px;
   }
 }
 
 @layer utilities {
   .surface {
-    @apply rounded-2xl border border-ink-200/70 bg-white;
+    @apply rounded-2xl border border-ink-200/80 bg-paper;
   }
 
-  .surface-shadow {
-    box-shadow:
-      0 1px 2px rgb(23 27 36 / 0.04),
-      0 12px 32px -16px rgb(23 27 36 / 0.18);
+  .dot-grid {
+    background-image: radial-gradient(rgb(28 23 18 / 0.07) 1px, transparent 1px);
+    background-size: 22px 22px;
   }
 
-  .hero-grid {
-    background-image:
-      linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px);
-    background-size: 44px 44px;
+  .dot-grid-light {
+    background-image: radial-gradient(rgb(255 253 249 / 0.1) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-ink-100) 25%,
+      var(--color-ink-50) 50%,
+      var(--color-ink-100) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  .animate-rise {
+    animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-float {
+    animation: float 8s ease-in-out infinite;
+  }
+
+  .reveal-1 {
+    animation-delay: 90ms;
+  }
+
+  .reveal-2 {
+    animation-delay: 180ms;
+  }
+
+  .reveal-3 {
+    animation-delay: 270ms;
+  }
+
+  .reveal-4 {
+    animation-delay: 360ms;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-rise,
+  .animate-float,
+  .skeleton {
+    animation: none;
   }
 }

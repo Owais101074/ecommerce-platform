@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { ShieldCheck } from 'lucide-react';
 import { getErrorMessage, getFieldErrors } from '@/api/errors';
-import { Container } from '@/components/layout/Container';
+import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useAuth } from '@/features/auth/useAuth';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
@@ -66,52 +68,51 @@ export function LoginPage() {
   }
 
   return (
-    <Container className="flex justify-center py-14 sm:py-20">
-      <div className="w-full max-w-md">
-        <div className="surface surface-shadow p-6 sm:p-8">
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">Welcome back</h1>
-          <p className="mt-1 text-sm text-ink-500">
-            Sign in to manage your profile and reach protected pages.
-          </p>
+    <AuthLayout
+      title="Welcome back."
+      subtitle="Sign in to manage your profile and reach the pages reserved for your account."
+      footer={
+        <>
+          New here?{' '}
+          <Link to="/register" className="font-semibold text-brand-800 hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        {formError && <Alert variant="error">{formError}</Alert>}
 
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
-            {formError && <Alert variant="error">{formError}</Alert>}
+        <Input
+          label="Email"
+          type="email"
+          name="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          error={errors.email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
 
-            <Input
-              label="Email"
-              type="email"
-              name="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              error={errors.email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
+        <PasswordInput
+          label="Password"
+          name="password"
+          autoComplete="current-password"
+          placeholder="Your password"
+          value={password}
+          error={errors.password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
 
-            <Input
-              label="Password"
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              placeholder="Your password"
-              value={password}
-              error={errors.password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+        <Button type="submit" fullWidth size="lg" loading={submitting}>
+          {submitting ? 'Signing in…' : 'Sign in'}
+        </Button>
 
-            <Button type="submit" fullWidth loading={submitting}>
-              {submitting ? 'Signing in…' : 'Sign in'}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-ink-500">
-            New here?{' '}
-            <Link to="/register" className="font-semibold text-brand-700 hover:underline">
-              Create an account
-            </Link>
-          </p>
-        </div>
-      </div>
-    </Container>
+        <p className="flex items-start gap-2 text-xs leading-relaxed text-ink-500">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden="true" />
+          Your access token stays in memory; the refresh token lives in an httpOnly cookie.
+        </p>
+      </form>
+    </AuthLayout>
   );
 }

@@ -5,8 +5,9 @@ every phase. If chat context is lost, this file is the source of truth.
 For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
-**Last updated:** 2026-11-03
+**Last updated:** 2026-11-04
 **Current phase:** Phase 4 — React Frontend Foundation (complete, awaiting review)
+**Latest work:** storefront UI refresh (design system, shell, auth layout, pages)
 **Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
@@ -103,6 +104,7 @@ ecommerce-platform/
 | Client refresh | 401 → one shared `/auth/refresh` call → retry once | Many parallel 401s cost one refresh |
 | Client session restore | Refresh cookie on app mount, deduplicated | StrictMode double effects cannot rotate twice |
 | Styling | Tailwind CSS 4 via `@tailwindcss/vite` with `@theme` tokens | No config file; tokens generate utilities |
+| Visual design | Warm editorial palette (cream/paper, forest green, terracotta), Fraunces + Plus Jakarta Sans, lucide-react icons | A curated-store feel, not a default dashboard; all tokens live in `index.css` |
 | Client routing | React Router 7 `createBrowserRouter` | Data-router ready for loaders later |
 | Cart/wishlist | Persisted server-side | Cross-device consistency |
 | Testing | Manual + Postman per phase; formal suite in Phase 11 | Learn behavior before automating |
@@ -166,7 +168,7 @@ bcryptjs 3, jsonwebtoken 9, cookie-parser 1.
 **server — dev:** typescript 6, tsx 4, eslint 10, typescript-eslint 8,
 eslint-config-prettier 10, prettier 3, `@types/*` (incl. jsonwebtoken, cookie-parser).
 **client — runtime:** react 19, react-dom 19, react-router-dom 7, @tanstack/react-query 5,
-axios 1.
+axios 1, lucide-react.
 **client — dev:** vite 8, @vitejs/plugin-react 6, typescript 6, tailwindcss 4,
 @tailwindcss/vite 4, eslint 10, typescript-eslint 8, eslint-plugin-react-hooks 7,
 eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@types/*`.
@@ -256,6 +258,15 @@ eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@type
 - [x] Browser checks: live home data, register, reload restore, logout, guarded
       redirect, login return, wrong password, customer vs admin, 404, and silent
       refresh after expiry
+- [x] UI refresh: warm editorial tokens, Fraunces + Plus Jakarta Sans, lucide icons
+- [x] UI refresh: announcement bar, sticky header, accessible mobile menu, branded
+      footer, `ScrollManager`, and auth-aware footer links
+- [x] UI refresh: full-screen split `AuthLayout` for `/login` and `/register`
+- [x] UI refresh: shared `BrandMark`, `PasswordInput`, `SectionHeading`; refreshed
+      Home, Account, Admin, 404 and route-error pages
+- [x] UI refresh: curated Unsplash product photos in `seed:catalog` and the dev DB
+- [x] UI refresh: browser re-check of auth, admin, 404 and footer states;
+      typecheck, lint and build pass
 - [ ] Close Phase 4 review
 
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
@@ -271,6 +282,7 @@ twice.
 | 2 | Auth module, JWT, roles, protected routes | done |
 | 3 | Category + product CRUD, search/filter/sort/pagination, seed script | done |
 | 4 | Vite + React + Tailwind + Router + Query scaffold | done |
+| 4 | Storefront UI refresh (design system, shell, auth layout, pages) | done |
 | 5 | Home, listing, details, search UI | not started |
 | 6 | Cart + wishlist | not started |
 | 7 | Addresses + checkout | not started |

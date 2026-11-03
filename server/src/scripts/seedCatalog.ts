@@ -15,14 +15,18 @@ const catalog = [
         description: 'Ergonomic wireless mouse with silent clicks and long battery life.',
         price: 129900,
         stock: 40,
-        images: ['https://picsum.photos/seed/wireless-mouse/600/600'],
+        images: [
+          'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?auto=format&fit=crop&w=900&q=80',
+        ],
       },
       {
         name: 'Mechanical Keyboard',
         description: 'Tenkeyless mechanical keyboard with tactile switches and white backlight.',
         price: 349900,
         stock: 25,
-        images: ['https://picsum.photos/seed/mechanical-keyboard/600/600'],
+        images: [
+          'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=900&q=80',
+        ],
       },
     ],
   },
@@ -37,7 +41,9 @@ const catalog = [
         description: 'Soft breathable cotton t-shirt with a relaxed fit and durable stitching.',
         price: 79900,
         stock: 120,
-        images: ['https://picsum.photos/seed/cotton-tshirt/600/600'],
+        images: [
+          'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80',
+        ],
       },
       {
         name: 'Canvas Backpack',
@@ -45,7 +51,9 @@ const catalog = [
           'Water-resistant canvas backpack with a padded laptop sleeve and side pockets.',
         price: 189900,
         stock: 35,
-        images: ['https://picsum.photos/seed/canvas-backpack/600/600'],
+        images: [
+          'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=80',
+        ],
       },
     ],
   },
@@ -61,14 +69,18 @@ const catalog = [
           'Hand-finished ceramic mug that keeps drinks warm and feels comfortable to hold.',
         price: 49900,
         stock: 80,
-        images: ['https://picsum.photos/seed/ceramic-mug/600/600'],
+        images: [
+          'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=900&q=80',
+        ],
       },
       {
         name: 'Desk Lamp',
         description: 'Adjustable LED desk lamp with three brightness levels and a flexible neck.',
         price: 159900,
         stock: 0,
-        images: ['https://picsum.photos/seed/desk-lamp/600/600'],
+        images: [
+          'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=80',
+        ],
       },
     ],
   },
