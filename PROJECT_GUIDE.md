@@ -751,7 +751,7 @@ registration, validation, password toggle, logout, login, wrong password,
 admin promotion and `/admin/ping`, footer auth state, and the 404 page. The
 in-app browser reported a 0×0 hidden viewport, so screenshots and scroll
 offsets were not available; structure and computed styles were checked through
-DOM snapshots instead.
+DOM snapshots instead. Commit `7295129`.
 
 **Be able to explain:** why the access token is not in localStorage, how the
 401 refresh-and-retry interceptor works, why the refresh promise is shared,
@@ -1266,6 +1266,9 @@ added by this refresh was the existing session bootstrap; no endpoints changed.
 | `a686772` | refactor(server): remove unused ApiError flag |
 | `49f0fd7` | feat(auth): add JWT authentication and role-based access |
 | `1639558` | feat(catalog): add category and product management |
+| `0e6367f` | feat(client): add React frontend foundation |
+| `fa30e3e` | docs: record phase 4 commit in project guide |
+| `7295129` | feat(ui): refresh storefront design and shared primitives |
 
 ---
 
