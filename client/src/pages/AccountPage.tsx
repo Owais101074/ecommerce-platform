@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -11,11 +11,16 @@ import {
   UserRound,
   type LucideIcon,
 } from 'lucide-react';
+import { getErrorMessage, getFieldErrors } from '@/api/errors';
+import { changePasswordRequest } from '@/api/users.api';
 import { Container } from '@/components/layout/Container';
+import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { buttonStyles } from '@/components/ui/button-styles';
+import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/features/auth/useAuth';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { PASSWORD_CHANGED_NOTICE } from '@/lib/constants';
 import { formatDate, initials } from '@/lib/format';
 
 function DetailRow({
@@ -40,24 +45,44 @@ function DetailRow({
 
 const roadmap = [
   {
-    title: 'Browse and search',
-    copy: 'Product listing, filters and detail pages.',
-  },
-  {
     title: 'Cart and wishlist',
-    copy: 'Saved items and quantities synced to your account.',
+    copy: 'Phase 6 — saved items and quantities synced to your account.',
   },
   {
-    title: 'Checkout and orders',
-    copy: 'Addresses, payment and order history.',
+    title: 'Checkout and addresses',
+    copy: 'Phase 7 — delivery details, address book and coupon validation.',
+  },
+  {
+    title: 'Payment and orders',
+    copy: 'Phases 8–9 — payments, order history and tracking.',
   },
 ];
 
 export function AccountPage() {
   useDocumentTitle('Your account');
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
+
   const [signingOut, setSigningOut] = useState(false);
+
+  const [profileName, setProfileName] = useState(user?.name ?? '');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileFormError, setProfileFormError] = useState<string | null>(null);
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordFormError, setPasswordFormError] = useState<string | null>(null);
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name);
+    }
+  }, [user]);
 
   if (!user) {
     return null;
@@ -68,6 +93,50 @@ export function AccountPage() {
     await logout();
     navigate('/');
   }
+
+  async function handleProfileSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setSavingProfile(true);
+    setProfileSaved(false);
+    setProfileFormError(null);
+    setProfileErrors({});
+
+    try {
+      await updateProfile({ name: profileName.trim() });
+      setProfileSaved(true);
+    } catch (error) {
+      setProfileFormError(getErrorMessage(error));
+      setProfileErrors(getFieldErrors(error));
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setPasswordFormError(null);
+    setPasswordErrors({});
+
+    if (newPassword !== confirmPassword) {
+      setPasswordErrors({ confirmPassword: 'The two passwords do not match' });
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      await changePasswordRequest({ currentPassword, newPassword });
+      navigate('/account', { replace: true, state: { notice: PASSWORD_CHANGED_NOTICE } });
+      await logout();
+    } catch (error) {
+      setPasswordFormError(getErrorMessage(error));
+      setPasswordErrors(getFieldErrors(error));
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
+  const profileUnchanged = profileName.trim() === user.name;
 
   return (
     <Container className="py-12 sm:py-16">
@@ -81,7 +150,7 @@ export function AccountPage() {
             Your corner of Bazaar.
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-500">
-            Profile details come from the signed-in session served by the API.
+            Update your details, change your password, and see how this session stays secure.
           </p>
         </div>
 
@@ -143,10 +212,124 @@ export function AccountPage() {
                 <dd className="max-w-40 truncate font-mono text-xs text-cream/70">{user.id}</dd>
               </div>
             </dl>
+
+            <Link
+              to="/products"
+              className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-cream/80 transition hover:text-cream"
+            >
+              Browse the catalogue
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
           </div>
         </section>
 
         <div className="space-y-6">
+          <section className="surface p-6 shadow-soft sm:p-7">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                <UserRound className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 className="font-display text-xl font-semibold text-ink-900">Profile details</h2>
+                <p className="text-xs text-ink-500">How you appear across the store.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleProfileSubmit} className="mt-5 space-y-4" noValidate>
+              {profileFormError && <Alert variant="error">{profileFormError}</Alert>}
+              {profileSaved && (
+                <Alert variant="success" title="Profile updated">
+                  Your new name is saved and shown in the header.
+                </Alert>
+              )}
+
+              <Input
+                label="Full name"
+                value={profileName}
+                onChange={(event) => {
+                  setProfileName(event.target.value);
+                  setProfileSaved(false);
+                }}
+                autoComplete="name"
+                error={profileErrors.name}
+                hint="Between 2 and 50 characters."
+              />
+
+              <Input
+                label="Email address"
+                value={user.email}
+                readOnly
+                disabled
+                hint="Email changes are not available yet."
+                className="disabled:cursor-not-allowed disabled:bg-ink-100 disabled:text-ink-500"
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-ink-400">Joined {formatDate(user.createdAt)}</p>
+                <Button
+                  type="submit"
+                  loading={savingProfile}
+                  disabled={profileUnchanged || profileName.trim().length < 2}
+                >
+                  Save changes
+                </Button>
+              </div>
+            </form>
+          </section>
+
+          <section className="surface p-6 shadow-soft sm:p-7">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-50 text-accent-600">
+                <KeyRound className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 className="font-display text-xl font-semibold text-ink-900">Change password</h2>
+                <p className="text-xs text-ink-500">
+                  A new password signs out every device, including this one.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handlePasswordSubmit} className="mt-5 space-y-4" noValidate>
+              {passwordFormError && <Alert variant="error">{passwordFormError}</Alert>}
+
+              <Input
+                label="Current password"
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                autoComplete="current-password"
+                error={passwordErrors.currentPassword}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="New password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  autoComplete="new-password"
+                  error={passwordErrors.newPassword}
+                  hint="At least 8 characters."
+                />
+                <Input
+                  label="Confirm new password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  error={passwordErrors.confirmPassword}
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <Button type="submit" loading={changingPassword}>
+                  Update password
+                </Button>
+              </div>
+            </form>
+          </section>
+
           <section className="surface p-6 shadow-soft sm:p-7">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">

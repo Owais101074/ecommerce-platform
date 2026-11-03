@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useQueryClient } from '@tanstack/react-query';
 import { loginRequest, logoutRequest, refreshRequest, registerRequest } from '@/api/auth.api';
 import { clearAccessToken, onSessionExpired, setAccessToken } from '@/api/session';
-import type { AuthSession, LoginPayload, RegisterPayload, User } from '@/types/auth';
+import { updateProfileRequest } from '@/api/users.api';
+import type {
+  AuthSession,
+  LoginPayload,
+  RegisterPayload,
+  UpdateProfilePayload,
+  User,
+} from '@/types/auth';
 import { AuthContext, type AuthContextValue, type AuthStatus } from './auth-context';
 
 /**
@@ -91,6 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
+  const updateProfile = useCallback(async (payload: UpdateProfilePayload) => {
+    const nextUser = await updateProfileRequest(payload);
+    setUser(nextUser);
+    return nextUser;
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await logoutRequest();
@@ -108,9 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: user?.role === 'admin',
       login,
       register,
+      updateProfile,
       logout,
     }),
-    [user, status, login, register, logout],
+    [user, status, login, register, updateProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

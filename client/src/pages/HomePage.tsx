@@ -175,8 +175,8 @@ export function HomePage() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link to="/#new-arrivals" className={buttonStyles({ size: 'lg' })}>
-                Explore the edit
+              <Link to="/products" className={buttonStyles({ size: 'lg' })}>
+                Shop the catalogue
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               {status === 'authenticated' ? (
@@ -227,7 +227,11 @@ export function HomePage() {
             eyebrow="01 — Departments"
             title="Shop the departments"
             description="Three small departments, each holding only what earns its place."
-            action={categories.length > 0 ? <p>{categories.length} departments live</p> : undefined}
+            action={
+              <Link to="/products" className="font-semibold text-brand-800 hover:underline">
+                Shop all departments
+              </Link>
+            }
           />
 
           <div className="mt-8">
@@ -311,11 +315,12 @@ export function HomePage() {
             title="Fresh from the catalogue"
             description="The latest pieces to land in the warehouse, sorted newest first."
             action={
-              productsQuery.data ? (
-                <p>
-                  Showing {featuredProducts.length} of {productsQuery.data.meta.total}
-                </p>
-              ) : undefined
+              <Link
+                to="/products?sort=newest"
+                className="font-semibold text-brand-800 hover:underline"
+              >
+                View all new arrivals
+              </Link>
             }
           />
 

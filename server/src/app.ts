@@ -10,6 +10,7 @@ import authRoutes from './modules/auth/auth.routes';
 import categoryRoutes from './modules/categories/category.routes';
 import healthRoutes from './modules/health/health.routes';
 import productRoutes from './modules/products/product.routes';
+import userRoutes from './modules/users/user.routes';
 
 export const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/products', productRoutes);
+app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
 
 app.use(notFound);

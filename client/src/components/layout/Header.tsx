@@ -10,9 +10,10 @@ import { initials } from '@/lib/format';
 import { Container } from './Container';
 
 const links = [
-  { label: 'Home', to: '/', end: true },
-  { label: 'Departments', to: '/#categories', end: false },
-  { label: 'New in', to: '/#new-arrivals', end: false },
+  { label: 'Home', to: '/' },
+  { label: 'Shop', to: '/products' },
+  { label: 'Departments', to: '/#categories' },
+  { label: 'New in', to: '/#new-arrivals' },
 ];
 
 const navLinkBase =
@@ -24,19 +25,18 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
   }`;
 }
 
-function guestNavLinks(closeMenu: () => void) {
+function mobileNavLinks(closeMenu: () => void) {
   return (
     <>
       {links.map((link) => (
-        <NavLink
+        <Link
           key={link.label}
           to={link.to}
-          end={link.end}
           onClick={closeMenu}
           className="rounded-xl px-3 py-2.5 text-sm font-medium text-ink-700 transition hover:bg-ink-900/5"
         >
           {link.label}
-        </NavLink>
+        </Link>
       ))}
     </>
   );
@@ -83,6 +83,9 @@ export function Header() {
           <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
             <NavLink to="/" end className={navLinkClass}>
               Home
+            </NavLink>
+            <NavLink to="/products" className={navLinkClass}>
+              Shop
             </NavLink>
             <Link to="/#categories" className={navLinkBase}>
               Departments
@@ -174,7 +177,7 @@ export function Header() {
             className="animate-rise relative z-40 border-b border-ink-200 bg-cream shadow-lift md:hidden"
           >
             <Container className="flex flex-col gap-1 py-4">
-              {guestNavLinks(closeMenu)}
+              {mobileNavLinks(closeMenu)}
               {status === 'authenticated' && (
                 <NavLink
                   to="/account"

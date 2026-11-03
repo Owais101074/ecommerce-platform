@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { LoginPayload, RegisterPayload, User } from '@/types/auth';
+import type { LoginPayload, RegisterPayload, UpdateProfilePayload, User } from '@/types/auth';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'guest';
 
@@ -10,6 +10,7 @@ export interface AuthContextValue {
   isAdmin: boolean;
   login: (payload: LoginPayload) => Promise<User>;
   register: (payload: RegisterPayload) => Promise<User>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<User>;
   logout: () => Promise<void>;
 }
 

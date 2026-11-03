@@ -2,9 +2,12 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AccountPage } from '@/pages/AccountPage';
 import { AdminPage } from '@/pages/AdminPage';
+import { CategoryPage } from '@/pages/CategoryPage';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { ProductPage } from '@/pages/ProductPage';
+import { ProductsPage } from '@/pages/ProductsPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { RouteErrorPage } from '@/pages/RouteErrorPage';
 import { RequireAdmin, RequireAuth } from './guards';
@@ -17,6 +20,18 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <HomePage />,
+      },
+      {
+        path: 'products',
+        element: <ProductsPage />,
+      },
+      {
+        path: 'products/:slug',
+        element: <ProductPage />,
+      },
+      {
+        path: 'categories/:slug',
+        element: <CategoryPage />,
       },
       {
         path: 'account',

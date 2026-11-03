@@ -1,4 +1,5 @@
-import { Lamp, Laptop, Package, Shirt, type LucideIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Lamp, Laptop, Package, Shirt, type LucideIcon } from 'lucide-react';
 import type { Category } from '@/types/catalog';
 
 const tones = [
@@ -35,38 +36,49 @@ export function CategoryCard({ category, index = 0 }: { category: Category; inde
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-3xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-soft sm:p-7 ${tone.card}`}
+      className={`group relative overflow-hidden rounded-3xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-soft ${tone.card}`}
     >
-      <span
-        className={`absolute -top-2 right-4 font-display text-7xl leading-none font-semibold select-none ${tone.number}`}
-        aria-hidden="true"
+      <Link
+        to={`/categories/${category.slug}`}
+        className="relative block p-6 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:outline-none sm:p-7"
       >
-        {String(index + 1).padStart(2, '0')}
-      </span>
-
-      <div className="relative">
         <span
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:-rotate-6 ${tone.icon}`}
+          className={`absolute -top-2 right-4 font-display text-7xl leading-none font-semibold select-none ${tone.number}`}
+          aria-hidden="true"
         >
-          <Icon className="h-5 w-5" aria-hidden="true" />
+          {String(index + 1).padStart(2, '0')}
         </span>
 
-        <h3 className="mt-6 font-display text-2xl font-semibold tracking-tight text-ink-900">
-          {category.name}
-        </h3>
-        <p className="mt-2 line-clamp-2 max-w-xs text-sm leading-relaxed text-ink-600">
-          {category.description ?? 'Browse this department.'}
-        </p>
-
-        <div className="mt-7 flex items-center gap-3">
-          <span className="h-px flex-1 bg-ink-900/10" aria-hidden="true" />
-          <span className={`text-[11px] font-bold tracking-[0.16em] uppercase ${tone.label}`}>
-            {category.children.length > 0
-              ? `${category.children.length} subcategories`
-              : 'Curated department'}
+        <div className="relative">
+          <span
+            className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:-rotate-6 ${tone.icon}`}
+          >
+            <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
+
+          <h3 className="mt-6 font-display text-2xl font-semibold tracking-tight text-ink-900">
+            {category.name}
+          </h3>
+          <p className="mt-2 line-clamp-2 max-w-xs text-sm leading-relaxed text-ink-600">
+            {category.description ?? 'Browse this department.'}
+          </p>
+
+          <div className="mt-7 flex items-center gap-3">
+            <span className="h-px flex-1 bg-ink-900/10" aria-hidden="true" />
+            <span
+              className={`flex items-center gap-1.5 text-[11px] font-bold tracking-[0.16em] uppercase ${tone.label}`}
+            >
+              {category.children.length > 0
+                ? `${category.children.length} subcategories`
+                : 'Shop department'}
+              <ArrowRight
+                className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </span>
+          </div>
         </div>
-      </div>
+      </Link>
     </article>
   );
 }

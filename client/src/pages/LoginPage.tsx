@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useAuth } from '@/features/auth/useAuth';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { PASSWORD_CHANGED_MESSAGE, PASSWORD_CHANGED_NOTICE } from '@/lib/constants';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,7 +25,10 @@ export function LoginPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const redirectTo = (location.state as { from?: string } | null)?.from ?? '/';
+  const state = location.state as { from?: string; message?: string; notice?: string } | null;
+  const redirectTo = state?.from ?? '/';
+  const notice =
+    state?.message ?? (state?.notice === PASSWORD_CHANGED_NOTICE ? PASSWORD_CHANGED_MESSAGE : null);
 
   if (isAuthenticated) {
     return <Navigate to={redirectTo} replace />;
@@ -81,6 +85,7 @@ export function LoginPage() {
       }
     >
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        {notice && !formError && <Alert variant="info">{notice}</Alert>}
         {formError && <Alert variant="error">{formError}</Alert>}
 
         <Input
