@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AccountPage } from '@/pages/AccountPage';
 import { AdminPage } from '@/pages/AdminPage';
+import { CartPage } from '@/pages/CartPage';
 import { CategoryPage } from '@/pages/CategoryPage';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
@@ -10,6 +11,7 @@ import { ProductPage } from '@/pages/ProductPage';
 import { ProductsPage } from '@/pages/ProductsPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { RouteErrorPage } from '@/pages/RouteErrorPage';
+import { WishlistPage } from '@/pages/WishlistPage';
 import { RequireAdmin, RequireAuth } from './guards';
 
 export const router = createBrowserRouter([
@@ -38,6 +40,22 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <AccountPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'cart',
+        element: (
+          <RequireAuth>
+            <CartPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'wishlist',
+        element: (
+          <RequireAuth>
+            <WishlistPage />
           </RequireAuth>
         ),
       },

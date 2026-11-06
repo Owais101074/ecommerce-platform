@@ -6,7 +6,7 @@ import type { CategoryDocument } from '../categories/category.model';
 import { toProductDTO } from './product.mapper';
 import { Product } from './product.model';
 import type { IProduct } from './product.model';
-import type { CategorySummary, ProductListResult } from './product.types';
+import type { CategorySummary, ProductDTO, ProductListResult } from './product.types';
 import type {
   CreateProductInput,
   ProductQuery,
@@ -50,6 +50,29 @@ async function loadCategorySummaries(
   }
 
   return summaries;
+}
+
+/** Loads active products keyed by id for carts and wishlists. */
+export async function loadProductDTOs(
+  productIds: Types.ObjectId[],
+): Promise<Map<string, ProductDTO>> {
+  const productsById = new Map<string, ProductDTO>();
+
+  if (productIds.length === 0) {
+    return productsById;
+  }
+
+  const products = await Product.find({ _id: { $in: productIds }, isActive: true });
+  const categories = await loadCategorySummaries(products.map((product) => product.categoryId));
+
+  for (const product of products) {
+    productsById.set(
+      product._id.toString(),
+      toProductDTO(product, categories.get(product.categoryId.toString()) ?? null),
+    );
+  }
+
+  return productsById;
 }
 
 export async function listProducts(query: ProductQuery): Promise<ProductListResult> {

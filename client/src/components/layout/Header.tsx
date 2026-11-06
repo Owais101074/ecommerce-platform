@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { ArrowRight, LogOut, Menu, Sparkles, X } from 'lucide-react';
+import { ArrowRight, Heart, LogOut, Menu, ShoppingBag, Sparkles, X } from 'lucide-react';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
 import { buttonStyles } from '@/components/ui/button-styles';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/features/auth/useAuth';
+import { useCartCount } from '@/hooks/useCart';
+import { useWishlistCount } from '@/hooks/useWishlist';
 import { initials } from '@/lib/format';
 import { Container } from './Container';
 
@@ -44,6 +46,8 @@ function mobileNavLinks(closeMenu: () => void) {
 
 export function Header() {
   const { status, user, isAdmin, logout } = useAuth();
+  const cartCount = useCartCount();
+  const wishlistCount = useWishlistCount();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -123,13 +127,39 @@ export function Header() {
             {status === 'authenticated' && user && (
               <>
                 <Link
+                  to="/wishlist"
+                  aria-label={`Wishlist, ${wishlistCount} saved`}
+                  title="Wishlist"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 bg-paper text-ink-600 transition hover:border-ink-300 hover:text-accent-600"
+                >
+                  <Heart className="h-4 w-4" aria-hidden="true" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-500 px-1 text-[9px] font-bold text-white tabular-nums">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  to="/cart"
+                  aria-label={`Cart, ${cartCount} items`}
+                  title="Cart"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 bg-paper text-ink-600 transition hover:border-ink-300 hover:text-brand-800"
+                >
+                  <ShoppingBag className="h-4 w-4" aria-hidden="true" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-700 px-1 text-[9px] font-bold text-cream tabular-nums">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+                <Link
                   to="/account"
                   className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 transition hover:bg-ink-900/5"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-800 text-[11px] font-bold text-cream">
                     {initials(user.name)}
                   </span>
-                  <span className="max-w-32 truncate text-sm font-medium text-ink-800">
+                  <span className="hidden max-w-32 truncate text-sm font-medium text-ink-800 lg:block">
                     {user.name}
                   </span>
                 </Link>
@@ -186,6 +216,30 @@ export function Header() {
                 >
                   Account
                 </NavLink>
+              )}
+              {status === 'authenticated' && (
+                <>
+                  <NavLink
+                    to="/cart"
+                    onClick={closeMenu}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-ink-700 transition hover:bg-ink-900/5"
+                  >
+                    Cart
+                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-bold text-brand-800 tabular-nums">
+                      {cartCount}
+                    </span>
+                  </NavLink>
+                  <NavLink
+                    to="/wishlist"
+                    onClick={closeMenu}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-ink-700 transition hover:bg-ink-900/5"
+                  >
+                    Wishlist
+                    <span className="rounded-full bg-accent-100 px-2 py-0.5 text-[11px] font-bold text-accent-700 tabular-nums">
+                      {wishlistCount}
+                    </span>
+                  </NavLink>
+                </>
               )}
               {isAdmin && (
                 <NavLink

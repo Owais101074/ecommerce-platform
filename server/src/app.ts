@@ -7,10 +7,12 @@ import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import adminRoutes from './modules/admin/admin.routes';
 import authRoutes from './modules/auth/auth.routes';
+import cartRoutes from './modules/cart/cart.routes';
 import categoryRoutes from './modules/categories/category.routes';
 import healthRoutes from './modules/health/health.routes';
 import productRoutes from './modules/products/product.routes';
 import userRoutes from './modules/users/user.routes';
+import wishlistRoutes from './modules/wishlist/wishlist.routes';
 
 export const app = express();
 
@@ -32,6 +34,8 @@ app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/products', productRoutes);
+app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
 

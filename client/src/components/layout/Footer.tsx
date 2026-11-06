@@ -18,6 +18,8 @@ export function Footer() {
   const accountLinks = isAuthenticated
     ? [
         { label: 'Your account', to: '/account' },
+        { label: 'Cart', to: '/cart' },
+        { label: 'Wishlist', to: '/wishlist' },
         ...(isAdmin ? [{ label: 'Admin console', to: '/admin' }] : []),
       ]
     : [

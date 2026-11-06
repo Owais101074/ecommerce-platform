@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import { formatPrice, initials } from '@/lib/format';
 import type { Product } from '@/types/catalog';
+import { ProductActions } from './ProductActions';
 import { StockBadge } from './StockBadge';
 
 export function ProductCard({ product }: { product: Product }) {
@@ -13,7 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="surface group flex flex-col overflow-hidden shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-lift">
       <Link
         to={`/products/${product.slug}`}
-        className="flex h-full flex-col focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+        className="flex flex-col focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
         <div className="relative aspect-[4/5] overflow-hidden bg-ink-100">
           {image && !imageFailed ? (
@@ -44,7 +45,7 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col p-5">
+        <div className="p-5 pb-0">
           {product.category && (
             <p className="text-[11px] font-bold tracking-[0.16em] text-accent-600 uppercase">
               {product.category.name}
@@ -56,19 +57,20 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-ink-500">
             {product.description}
           </p>
-
-          <div className="mt-auto pt-5">
-            <div className="flex items-end justify-between gap-3 border-t border-ink-100 pt-3.5">
-              <p className="text-lg font-bold tracking-tight text-ink-900 tabular-nums">
-                {formatPrice(product.price)}
-              </p>
-              <p className="text-xs font-medium text-ink-500">
-                {product.rating.count > 0 ? `${product.rating.count} reviews` : 'No reviews yet'}
-              </p>
-            </div>
-          </div>
         </div>
       </Link>
+
+      <div className="mt-auto p-5 pt-4">
+        <div className="flex items-end justify-between gap-3 border-t border-ink-100 pt-3.5">
+          <p className="text-lg font-bold tracking-tight text-ink-900 tabular-nums">
+            {formatPrice(product.price)}
+          </p>
+          <p className="text-xs font-medium text-ink-500">
+            {product.rating.count > 0 ? `${product.rating.count} reviews` : 'No reviews yet'}
+          </p>
+        </div>
+        <ProductActions product={product} className="mt-3" />
+      </div>
     </article>
   );
 }

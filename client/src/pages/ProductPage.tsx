@@ -10,10 +10,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { getErrorMessage } from '@/api/errors';
+import { QuantityStepper } from '@/components/cart/QuantityStepper';
 import { Container } from '@/components/layout/Container';
+import { AddToCartButton, WishlistButton } from '@/components/product/ProductActions';
 import { ProductCard } from '@/components/product/ProductCard';
 import { StockBadge } from '@/components/product/StockBadge';
-import { Alert } from '@/components/ui/Alert';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { buttonStyles } from '@/components/ui/button-styles';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -67,10 +68,12 @@ export function ProductPage() {
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     setActiveIndex(0);
     setImageFailed(false);
+    setQuantity(1);
   }, [product?.id]);
 
   const relatedQuery = useProducts(
@@ -229,7 +232,7 @@ export function ProductPage() {
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
                 {product.stock > 0
                   ? 'Ready to ship from our warehouse'
-                  : 'Join the waitlist when cart launches'}
+                  : 'Save it to your wishlist and check back soon'}
               </li>
               <li className="flex items-start gap-2.5 text-sm text-ink-600">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
@@ -237,17 +240,30 @@ export function ProductPage() {
               </li>
             </ul>
 
-            <div className="mt-6">
-              <Alert variant="info" title="Checkout opens in the next phase">
-                Browsing is live now. Carts, addresses and payments arrive with Phase 6.
-              </Alert>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/products" className={buttonStyles({ variant: 'secondary' })}>
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                Keep browsing
-              </Link>
+            <div className="mt-6 rounded-2xl border border-ink-200/80 bg-paper/70 p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-3">
+                {product.stock > 0 && (
+                  <QuantityStepper
+                    value={quantity}
+                    onChange={setQuantity}
+                    max={Math.min(10, product.stock)}
+                    size="md"
+                    label="Quantity"
+                  />
+                )}
+                <AddToCartButton
+                  product={product}
+                  quantity={quantity}
+                  size="lg"
+                  className="min-w-44 flex-1"
+                />
+                <WishlistButton product={product} size="md" />
+              </div>
+              <p className="mt-3 text-xs text-ink-500">
+                {product.stock > 0
+                  ? `Add up to ${Math.min(10, product.stock)} to your cart. Wishlist items stay saved to your account.`
+                  : 'This piece is out of stock. Save it to your wishlist and check back soon.'}
+              </p>
             </div>
 
             <dl className="mt-9 grid gap-4 border-t border-ink-200/80 pt-7 sm:grid-cols-3">
