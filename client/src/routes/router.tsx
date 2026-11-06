@@ -1,12 +1,16 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AccountPage } from '@/pages/AccountPage';
+import { AddressesPage } from '@/pages/AddressesPage';
 import { AdminPage } from '@/pages/AdminPage';
 import { CartPage } from '@/pages/CartPage';
+import { CheckoutPage } from '@/pages/CheckoutPage';
 import { CategoryPage } from '@/pages/CategoryPage';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { OrderDetailPage } from '@/pages/OrderDetailPage';
+import { OrdersPage } from '@/pages/OrdersPage';
 import { ProductPage } from '@/pages/ProductPage';
 import { ProductsPage } from '@/pages/ProductsPage';
 import { RegisterPage } from '@/pages/RegisterPage';
@@ -56,6 +60,38 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <WishlistPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'addresses',
+        element: (
+          <RequireAuth>
+            <AddressesPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'checkout',
+        element: (
+          <RequireAuth>
+            <CheckoutPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'orders',
+        element: (
+          <RequireAuth>
+            <OrdersPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'orders/:id',
+        element: (
+          <RequireAuth>
+            <OrderDetailPage />
           </RequireAuth>
         ),
       },

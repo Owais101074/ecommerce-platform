@@ -275,17 +275,16 @@ export function CartPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              disabled
+            <Link
+              to="/checkout"
               className={`${buttonStyles({ size: 'lg', fullWidth: true })} mt-5`}
             >
               <Lock className="h-4 w-4" aria-hidden="true" />
               Proceed to checkout
-            </button>
+            </Link>
 
             <p className="mt-3 text-center text-xs leading-relaxed text-ink-500">
-              Addresses, shipping and payments arrive in Phase 7.
+              Choose a delivery address and review shipping on the next step.
             </p>
 
             <p className="mt-5 flex items-start gap-2 border-t border-ink-200/80 pt-4 text-[11px] leading-relaxed text-ink-500">

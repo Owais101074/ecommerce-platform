@@ -5,6 +5,8 @@ import {
   CalendarDays,
   KeyRound,
   LogOut,
+  MapPin,
+  Package,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -45,16 +47,16 @@ function DetailRow({
 
 const roadmap = [
   {
-    title: 'Cart and wishlist',
-    copy: 'Phase 6 — saved items and quantities synced to your account.',
+    title: 'Payments',
+    copy: 'Phase 8 — Razorpay order creation and signature verification.',
   },
   {
-    title: 'Checkout and addresses',
-    copy: 'Phase 7 — delivery details, address book and coupon validation.',
+    title: 'Order lifecycle',
+    copy: 'Phase 9 — status tracking, cancellation and refunds.',
   },
   {
-    title: 'Payment and orders',
-    copy: 'Phases 8–9 — payments, order history and tracking.',
+    title: 'Admin dashboard',
+    copy: 'Phase 10 — inventory, coupons, orders and analytics.',
   },
 ];
 
@@ -155,6 +157,14 @@ export function AccountPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Link to="/orders" className={buttonStyles({ variant: 'secondary' })}>
+            <Package className="h-4 w-4" aria-hidden="true" />
+            Your orders
+          </Link>
+          <Link to="/addresses" className={buttonStyles({ variant: 'secondary' })}>
+            <MapPin className="h-4 w-4" aria-hidden="true" />
+            Addresses
+          </Link>
           {isAdmin && (
             <Link to="/admin" className={buttonStyles({ variant: 'secondary' })}>
               Admin area
