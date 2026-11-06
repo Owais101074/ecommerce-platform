@@ -35,7 +35,7 @@ ecommerce-platform/
 | 4 | Frontend foundation + storefront UI refresh | Complete |
 | 5 | Customer shopping experience | Complete |
 | 6 | Cart and wishlist | Complete |
-| 7 | Checkout and addresses | Not started |
+| 7 | Checkout, addresses and orders | Complete |
 | 8 | Payments | Not started |
 | 9 | Order management | Not started |
 | 10 | Admin dashboard | Not started |
@@ -143,6 +143,28 @@ reusing an old refresh token revokes the session.
 current password, rejects reuse of the old password, hashes the new one, revokes
 the stored refresh session and clears the refresh cookie.
 
+### Addresses and checkout (Phase 7)
+
+| Method | Endpoint | Access |
+|---|---|---|
+| GET | `/api/v1/addresses` | access token |
+| POST | `/api/v1/addresses` | access token |
+| PATCH | `/api/v1/addresses/:id` | access token |
+| PATCH | `/api/v1/addresses/:id/default` | access token |
+| DELETE | `/api/v1/addresses/:id` | access token |
+| POST | `/api/v1/orders/quote` | access token |
+| POST | `/api/v1/orders` | access token |
+| GET | `/api/v1/orders` | access token |
+| GET | `/api/v1/orders/:id` | access token |
+
+The first saved address becomes the default; setting another default unsets the
+previous one, and deleting the default promotes the oldest remaining address.
+Checkout totals are computed on the server in integer paise: GST is 18% and
+inclusive (`round(subtotal × 18 / 118)`), shipping is free from ₹999 (99,900
+paise) and ₹49 (4,900 paise) below that. Orders store item and address snapshots,
+decrement stock atomically, and clear the cart. Coupon codes are rejected until
+Phase 10; payment stays pending until Phase 8.
+
 ### Client (Phase 4)
 
 Start the API first, then the client in a second terminal:
@@ -178,6 +200,10 @@ Client routes:
 | `/login` | public | Sign in |
 | `/register` | public | Create account |
 | `/account` | signed in | Editable profile, password change and session details |
+| `/addresses` | signed in | Address book with default address management |
+| `/checkout` | signed in | Address selection, server quote and order placement |
+| `/orders` | signed in | Order history with pagination |
+| `/orders/:id` | signed in | Order detail with item and address snapshots |
 | `/admin` | admin | Role-guarded connectivity check |
 
 The access token is kept in memory only; a reload restores the session through

@@ -128,6 +128,45 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   loading, error, price-change, stock-warning and two-step clear states.
 - **Phase 6** — header cart/wishlist icons with live counts; both routes added
   to the authenticated footer links.
+- **Phase 7** — `addresses` collection scoped by `userId`, with label, contact,
+  address lines, pincode and an `isDefault` flag; compound index on
+  `(userId, createdAt)`.
+- **Phase 7** — address endpoints `GET /addresses`, `POST /addresses`,
+  `PATCH /addresses/:id`, `PATCH /addresses/:id/default`, `DELETE /addresses/:id`.
+- **Phase 7** — address rules: the first address becomes default automatically,
+  only one default can exist, the only address cannot lose default status, and
+  deleting the default promotes the oldest remaining address.
+- **Phase 7** — `orders` collection with unique `ORD-YYYYMMDD-XXXXXX` numbers,
+  item snapshots (`name`, `slug`, `image`, `price`, `quantity`, `lineTotal`),
+  a delivery address snapshot, integer pricing fields, order status and payment
+  status.
+- **Phase 7** — `order.pricing.ts` computes discounted subtotal, GST-inclusive
+  tax (`round(subtotal × 18 / 118)`), free shipping at ₹999 (99,900 paise) and
+  ₹49 (4,900 paise) below it, all in integer paise.
+- **Phase 7** — `POST /orders/quote` returns a server-computed checkout quote
+  plus `itemCount`, `couponCode` and a `priceChanged` flag.
+- **Phase 7** — `POST /orders` re-reads the cart, validates ownership of the
+  address, computes pricing again, snapshots items and address, decrements stock
+  with conditional updates, rolls back earlier decrements on failure, creates the
+  order and clears the cart.
+- **Phase 7** — `GET /orders` paginated own-order history and `GET /orders/:id`
+  ownership-scoped detail.
+- **Phase 7** — coupon hook rejects supplied codes with a clear `400` until full
+  coupon management lands in Phase 10.
+- **Phase 7** — client data layer: address and order API files, typed models,
+  `useAddresses` with cache-writing mutations, `useOrders`, `useOrder`,
+  `useCheckoutQuote` and `usePlaceOrder` (clears the cart cache on success).
+- **Phase 7** — `/addresses` with inline add/edit form, label selection, digit
+  filtering, default handling, two-step delete and default promotion feedback.
+- **Phase 7** — `/checkout` with saved-address selection, inline address
+  creation, delivery summary, server quote (subtotal, shipping, discount, GST,
+  total), price-change warning and disabled submit until an address and quote
+  exist.
+- **Phase 7** — `/orders` history with pagination and status badges, and
+  `/orders/:id` detail with the just-placed notice, item snapshots, address
+  snapshot, status cards and payment summary.
+- **Phase 7** — checkout link from the cart, order/address links in the account
+  page and authenticated footer, and `RequireAuth` guards on all new routes.
 
 ### Fixed
 
@@ -167,6 +206,24 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   still deferred to Phase 11.
 - A password change revokes the refresh session and signs the user out
   everywhere; the login page explains why through a redirect notice.
+- Addresses are stored per user and scoped by `userId` in every query, so an id
+  from another account returns `404` instead of leaking existence.
+- Exactly one address can be the default. The service enforces the invariant on
+  create, update, default switch and delete instead of trusting the client.
+- Checkout pricing is server-only: the client displays a quote but never sends a
+  price, and `POST /orders` recomputes every total before saving.
+- Tax is inclusive GST: `tax = round(subtotal × 18 / 118)` is the tax portion
+  inside the price, not an amount added on top.
+- Shipping is free from ₹999 and ₹49 below it, measured after discount.
+- Orders snapshot product name, slug, image, price and the delivery address, so
+  later catalogue and address edits never rewrite history.
+- Stock is decremented with a conditional `stock: { $gte: quantity }` update and
+  earlier decrements are rolled back if a later line fails; there are no
+  transactions on a standalone MongoDB.
+- Order numbers use the UTC date plus six random hex characters, backed by a
+  unique index.
+- Coupon codes are rejected until Phase 10 instead of silently ignoring them.
+- Payment stays `pending` in Phase 7; Phase 8 adds Razorpay and verification.
 
 ### Verified
 
@@ -214,6 +271,20 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   re-login notice.
 - Phase 5 network log: `PATCH /users/me` 200, password 400 then 200, logout 200,
   old password login 401, new password login 200. Console has no React errors.
+- Phase 7 API live checks (46): anonymous address list 401, invalid address 400
+  with six field errors, first address auto-default, explicit default switch,
+  edit, set default, delete non-default, delete default with promotion, quote
+  subtotal/shipping/GST/total, free shipping at quantity 3, unknown address 404,
+  coupon rejection 400, order 201 with `ORD-` number, `placed`/`pending` status,
+  item and address snapshots, cart cleared, stock decremented, list/detail,
+  cross-user order 404, order survives address deletion, empty-cart order 400.
+- Phase 7 browser checks: address empty state, validation errors mapping to
+  fields, add address (auto-default), second address, default switch, edit,
+  two-step delete with toast, cart checkout link, checkout address pre-selection
+  with ₹49 shipping, ₹76 GST and ₹548 total, order placement, confirmation with
+  snapshots, order history with pagination counts, empty-cart checkout state,
+  guest redirects from `/orders` and `/checkout` to `/login`, and no console
+  errors.
 - `typecheck`, `lint`, `format:check`, and `build` pass for both apps; the
   client build reports only the expected single-chunk size advisory.
 - `typecheck`, `lint`, `format:check`, and `build` pass for both apps.

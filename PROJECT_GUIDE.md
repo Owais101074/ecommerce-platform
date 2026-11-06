@@ -4,7 +4,7 @@
 > how it is architected, what each phase delivers, how every important workflow
 > runs, and how to explain it to anyone.
 >
-> Last updated: 2026-11-04 · Branch: `main` · Latest phase: Phase 5
+> Last updated: 2026-11-07 · Branch: `main` · Latest phase: Phase 7
 > Repository: https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
@@ -38,9 +38,9 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Database | MongoDB 8.2 + Mongoose 9 |
 | Frontend | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
 | Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 6 complete (cart and wishlist), awaiting review |
-| Completed phases | 0, 1, 2, 3, 4, 5, 6 |
-| Next phase | Phase 7 — Checkout and Address Management |
+| Current phase | Phase 7 complete (checkout, addresses and orders), awaiting review |
+| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7 |
+| Next phase | Phase 8 — Payment Integration |
 | API base | `http://localhost:5000/api/v1` |
 | Client base | `http://localhost:5173` |
 | Database (dev) | `mongodb://127.0.0.1:27017/ecommerce_dev` |
@@ -88,11 +88,13 @@ previous phase is reviewed and approved with the exact phrase
 
 If asked "what is finished right now?", answer:
 
-> "Phases 0–3: the repository and architecture, the Express/TypeScript
-> foundation with health check and error handling, complete authentication and
-> RBAC with 18 passing checks, and the product/category catalogue with search,
-> filters, sorting, pagination and 34 passing checks. Phase 4, the React
-> frontend foundation, is next."
+> "Phases 0–6 are complete: the repository and architecture; the
+> Express/TypeScript foundation; authentication and RBAC with 18 passing checks;
+> the product/category catalogue with 34 checks; the React foundation with a
+> storefront design refresh; the customer shopping experience; and cart and
+> wishlist with server-side pricing. Phase 7 adds checkout, addresses and
+> orders with 46 passing API checks, so the storefront can now take an order
+> end to end before payment."
 
 ---
 
@@ -334,6 +336,30 @@ server/
     │   │   ├── product.mapper.ts
     │   │   ├── product.types.ts
     │   │   └── product.validation.ts
+    │   ├── users/
+    │   │   └── profile routes/controller/service for `/users/me`
+    │   ├── cart/
+    │   │   └── cart routes/controller/service/model/mapper/types/validation
+    │   ├── wishlist/
+    │   │   └── wishlist routes/controller/service/model
+    │   ├── addresses/
+    │   │   ├── address.routes.ts
+    │   │   ├── address.controller.ts
+    │   │   ├── address.service.ts
+    │   │   ├── address.model.ts
+    │   │   ├── address.mapper.ts
+    │   │   ├── address.types.ts
+    │   │   └── address.validation.ts
+    │   ├── orders/
+    │   │   ├── order.routes.ts
+    │   │   ├── order.controller.ts
+    │   │   ├── order.service.ts
+    │   │   ├── order.model.ts
+    │   │   ├── order.mapper.ts
+    │   │   ├── order.pricing.ts        pure paise pricing rules
+    │   │   ├── coupon.service.ts       Phase 7 coupon hook
+    │   │   ├── order.types.ts
+    │   │   └── order.validation.ts
     │   └── health/
     │       ├── health.routes.ts
     │       └── health.controller.ts
@@ -371,30 +397,41 @@ client/
     │   ├── session.ts        in-memory access token, expiry listeners
     │   ├── errors.ts         ApiError, field error mapping
     │   ├── auth.api.ts       login, register, refresh, logout, me
-    │   └── catalog.api.ts    products, categories, admin ping
+    │   ├── catalog.api.ts    products, categories, admin ping
+    │   ├── cart.api.ts       cart + wishlist endpoints
+    │   ├── address.api.ts    address CRUD + set default
+    │   └── order.api.ts      quote, place order, list, detail
     ├── components/
     │   ├── layout/           Header, Footer, Container, AppLayout,
     │   │                     AuthLayout, ScrollManager
-    │   ├── product/          ProductCard, CategoryCard
+    │   ├── product/          ProductCard, CategoryCard, ProductActions,
+    │   │                     AddToCartButton, WishlistButton, QuantityStepper
+    │   ├── address/          AddressForm, AddressCard
+    │   ├── order/            OrderStatusBadge
     │   └── ui/               Button, button-styles, Input, PasswordInput,
-    │                         Alert, Badge, Spinner, Skeleton, ErrorState,
-    │                         PageLoader, BrandMark, SectionHeading
+    │                         Select, Alert, Badge, Spinner, Skeleton,
+    │                         ErrorState, PageLoader, Pagination, Breadcrumbs,
+    │                         BrandMark, SectionHeading
     ├── features/auth/        auth-context, AuthProvider, useAuth
     ├── hooks/                useProducts, useCategories, useAdminPing,
+    │                         useCart, useWishlist, useAddresses, useOrders,
     │                         useDocumentTitle
     ├── lib/                  env, queryClient, format, constants
-    ├── pages/                Home, Login, Register, Account, Admin, NotFound,
-    │                         RouteError
+    ├── pages/                Home, Login, Register, Account, Admin, Products,
+    │                         ProductDetail, Category, Cart, Wishlist,
+    │                         Addresses, Checkout, Orders, OrderDetail,
+    │                         NotFound, RouteError
     ├── routes/               router.tsx, guards.tsx
-    ├── types/                api, auth, catalog
+    ├── types/                api, auth, catalog, cart, address, order
     ├── App.tsx
     ├── index.css             Tailwind + @theme tokens
     ├── main.tsx
     └── vite-env.d.ts
 ```
 
-`features/products`, `cart`, `checkout`, `orders` and `admin` folders arrive with
-their phases; Phase 4 keeps auth in `features/` and catalogue hooks in `hooks/`.
+`features/` currently holds only session state. Server-backed features live in
+`hooks/` and typed `api/` files, with page-level composition in `pages/`; admin
+tooling arrives in Phase 10.
 
 ---
 
@@ -426,6 +463,11 @@ their phases; Phase 4 keeps auth in `features/` and catalogue hooks in `hooks/`.
 | Visual direction | Warm editorial palette, Fraunces + Plus Jakarta Sans, lucide icons | A curated shop feel that still scales to admin screens |
 | Routing | React Router 7 data router | Guards and future loaders in one place |
 | Cart/wishlist | Stored server-side | Cross-device consistency |
+| Checkout totals | Server quote plus recompute on order | The browser never sends money values |
+| Tax | GST-inclusive at 18%, `round(subtotal × 18 / 118)` | Indian retail pricing, exact integer paise |
+| Shipping | Free from ₹999 (99,900 paise), else ₹49 (4,900 paise) | One threshold measured after discount |
+| Address default | First address auto-default, exactly one default | Checkout has one unambiguous pre-selection |
+| Stock on order | Conditional `$gte` decrement with rollback | Prevents overselling without transactions |
 | Testing | Manual/Postman per phase, suite in Phase 11 | Learn behavior before automating |
 | Docker | Phase 12 | Core behaviour first, packaging later |
 
@@ -503,19 +545,69 @@ Catalogue rules:
 - Product responses include a category summary `{ id, name, slug }`.
 - Ratings are stored aggregates; actual review documents arrive in Phase 11.
 
-### 7.3 Planned collections
+### 7.3 Implemented — `addresses` and `orders`
+
+`addresses`:
+
+| Field | Type | Notes |
+|---|---|---|
+| `_id` | ObjectId | Primary key |
+| `userId` | ObjectId | reference to `users`, indexed |
+| `label` | string | Home \| Work \| Other |
+| `fullName` | string | 2–80 chars |
+| `phone` | string | 10 digits starting 6–9 |
+| `line1` | string | 5–120 chars |
+| `line2` | string \| null | optional |
+| `city` | string | required |
+| `state` | string | required |
+| `pincode` | string | exactly 6 digits |
+| `isDefault` | boolean | exactly one per user |
+| `createdAt` / `updatedAt` | Date | timestamps |
+
+Index: `(userId, createdAt)`. Every query includes `userId`, so another user's
+address id resolves to `404`.
+
+Default-address invariants enforced in the service:
+
+- The first address for a user is always created as default.
+- Creating or promoting a default unsets the previous one in a single
+  `updateMany`.
+- The only address cannot be un-defaulted (`400`); delete a different address or
+  add a second one first.
+- Deleting the default promotes the oldest remaining address.
+
+`orders`:
+
+| Field | Type | Notes |
+|---|---|---|
+| `_id` | ObjectId | Primary key |
+| `userId` | ObjectId | reference to `users` |
+| `orderNumber` | string | unique, `ORD-YYYYMMDD-XXXXXX` |
+| `items` | array | `{ productId, name, slug, image, price, quantity, lineTotal }` snapshot |
+| `address` | object | `{ fullName, phone, line1, line2, city, state, pincode }` snapshot |
+| `subtotal` | number | integer paise, from cart `priceAtAdd` |
+| `tax` | number | integer paise, GST already inside the price |
+| `shipping` | number | integer paise |
+| `discount` | number | integer paise, 0 until coupons exist |
+| `total` | number | integer paise, `subtotal - discount + shipping` |
+| `couponCode` | string \| null | reserved for Phase 10 |
+| `status` | enum | `placed` → `confirmed` → `shipped` → `delivered` / `cancelled` |
+| `paymentStatus` | enum | `pending` → `paid` / `failed` / `refunded` |
+| `createdAt` / `updatedAt` | Date | timestamps |
+
+Index: `(userId, createdAt)` plus a unique index on `orderNumber`. No stock or
+price is read from the client; the cart and catalogue are read again when the
+order is placed.
+
+### 7.4 Planned collections
 
 | Collection | Key fields | Relationships / indexes |
 |---|---|---|
-| `carts` | userId, items[{ productId, quantity, priceAtAdd }] | userId unique |
-| `wishlists` | userId, productIds[] | userId unique |
-| `addresses` | userId, label, line1, line2, city, state, pincode, phone, isDefault | index on userId |
-| `orders` | userId, items[] snapshot, address snapshot, subtotal, tax, shipping, discount, total, status, paymentStatus | index on userId + createdAt |
 | `payments` | orderId, provider, providerOrderId, providerPaymentId, amount, status, rawPayload | orderId unique |
 | `reviews` | userId, productId, rating, comment | unique (userId, productId) |
 | `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
 
-### 7.4 Relationship summary
+### 7.5 Relationship summary
 
 ```
 User 1─1 Cart
@@ -531,7 +623,7 @@ Order N─1 Coupon (optional)
 
 Every document reference is by ObjectId. Product/category public URLs use slugs.
 
-### 7.5 Data rules
+### 7.6 Data rules
 
 - **Prices are integers in paise.** ₹499.00 is stored as `49900`.
 - **Orders snapshot** product name, price and the delivery address.
@@ -589,13 +681,20 @@ invalid token, 403 wrong role, 404 not found, 409 duplicate, 422 business rule
 | GET | `/wishlist` | access token | active products in save order |
 | POST | `/wishlist/:productId` | access token | idempotent add |
 | DELETE | `/wishlist/:productId` | access token | idempotent remove |
+| GET | `/addresses` | access token | list own addresses, default first |
+| POST | `/addresses` | access token | create address; first one becomes default |
+| PATCH | `/addresses/:id` | access token | edit own address |
+| PATCH | `/addresses/:id/default` | access token | promote one address to default |
+| DELETE | `/addresses/:id` | access token | delete; promotes oldest remaining if default |
+| POST | `/orders/quote` | access token | server-computed checkout quote |
+| POST | `/orders` | access token | place order from cart + address |
+| GET | `/orders` | access token | own order history, paginated |
+| GET | `/orders/:id` | access token | own order detail |
 
 ### 8.3 Planned endpoints by phase
 
 | Phase | Endpoints |
 |---|---|
-| 7 | `/addresses/*`, `POST /orders`, `GET /orders*` |
-| 7 | `/addresses/*`, `POST /orders`, `GET /orders*` |
 | 8 | `/payments/orders`, `/payments/verify`, `/payments/webhook` |
 | 9 | cancel order, admin order routes |
 | 10 | `/coupons/*`, `/admin/*` |
@@ -887,16 +986,79 @@ counts from cached queries, and guarding UI routes with auth state.
 
 ---
 
-### Phase 7 — Checkout and Address Management — **PLANNED**
+### Phase 7 — Checkout and Address Management — **DONE**
 
 **Goal:** turn a cart into an order before payment.
 
-**Will deliver:**
-- Address CRUD and default address.
-- Checkout workflow and order summary.
-- Shipping and tax calculated in integer paise.
-- Coupon validation hook (full coupon management in Phase 10).
-- Order draft creation with address and item snapshots.
+**Delivered:**
+- `addresses` collection scoped by `userId`: label, full name, phone, line 1,
+  optional line 2, city, state, 6-digit pincode and `isDefault`.
+- Address endpoints `GET/POST /addresses`, `PATCH /addresses/:id`,
+  `PATCH /addresses/:id/default`, `DELETE /addresses/:id`; every response
+  returns the full list so the client can rewrite its cache in one step.
+- Address invariants: the first address is default automatically, creating or
+  promoting a default unsets the previous one, the only address cannot be
+  un-defaulted (`400`), and deleting the default promotes the oldest remaining
+  address.
+- `orders` collection with a unique `ORD-YYYYMMDD-XXXXXX` number, item
+  snapshots, an address snapshot, integer pricing fields, order status and
+  payment status, indexed by `(userId, createdAt)`.
+- Pure pricing module `order.pricing.ts`: discounted subtotal, GST-inclusive
+  tax at 18% (`round(subtotal × 18 / 118)`), free shipping from ₹999
+  (99,900 paise), otherwise ₹49 (4,900 paise).
+- `POST /orders/quote` returns subtotal, tax, shipping, discount, total,
+  `itemCount`, `couponCode` and a `priceChanged` flag.
+- `POST /orders` re-reads the cart, verifies address ownership, recomputes
+  pricing, snapshots items and address, decrements stock with conditional
+  `stock: { $gte: quantity }` updates, rolls back earlier decrements if a line
+  fails, creates the order and clears the cart.
+- `GET /orders` paginated history and `GET /orders/:id`, both scoped to the
+  signed-in user; another user's order id returns `404`.
+- Coupon hook: a supplied code returns `400 Coupon codes are not available yet`
+  until Phase 10 instead of being silently ignored.
+- Client data layer: `address.api.ts`, `order.api.ts`, address/order types,
+  `useAddresses` (cache-writing mutations), `useOrders`, `useOrder`,
+  `useCheckoutQuote` and `usePlaceOrder` (clears the cart cache on success).
+- `/addresses`: inline add/edit form with label selection, digit-only phone and
+  pincode inputs, default checkbox, server field errors, and a card grid with
+  default badge, set-default button and two-step delete.
+- `/checkout`: saved-address radio cards with default pre-selection, inline
+  address creation, delivery note, quote summary with GST and shipping,
+  price-change warning, and a submit button disabled until an address and quote
+  are ready.
+- `/orders` with page-based pagination and status badges; `/orders/:id` with the
+  just-placed notice, item snapshots, address snapshot, status cards and payment
+  summary.
+- Checkout link from the cart, order/address links on the account page and in
+  the authenticated footer, and `RequireAuth` guards on all four new routes.
+
+**Verification:** 46 live API checks passed: anonymous address access `401`,
+invalid address `400` with six field errors, first-address auto-default,
+default switching, edit, delete non-default, delete default with promotion,
+quote subtotal/shipping/inclusive GST/total, free shipping at quantity 3,
+unknown address `404`, coupon rejection `400`, order `201` with the number
+pattern, `placed`/`pending`, item and address snapshots, cart cleared, stock
+decremented, list/detail, cross-user order `404`, order surviving deletion of
+its address, and empty-cart order `400`. Browser checks covered the address
+empty state, field validation, add/second/default/edit, two-step delete with
+toast, cart checkout link, checkout pre-selection and totals (₹499 + ₹49
+shipping, ₹76 GST, ₹548 total), order placement, confirmation snapshots,
+history, empty-cart checkout, guest redirects from `/orders` and `/checkout`,
+and a clean console. `typecheck`, `lint`, `format:check` and `build` pass for
+both apps.
+
+**Be able to explain:** why the server recomputes totals on `POST /orders` even
+though the client shows a quote, why tax is inclusive rather than added, why
+shipping is measured after discount, how exactly one default address is
+enforced, why orders keep snapshots instead of reading current products or
+addresses, how stock is decremented safely without transactions, and why
+another user's order id returns `404` instead of `403`.
+
+**Key concepts learned:** ownership-scoped queries, enforcing an invariant
+across create/update/delete, pure pricing functions separated from I/O,
+conditioned updates (`stock: { $gte }`) as optimistic locking, compensating
+rollback, snapshot modelling, pagination with a stable sort, and TanStack Query
+cache invalidation after a mutation that changes several resources.
 
 ---
 
@@ -918,11 +1080,11 @@ counts from cached queries, and guarding UI routes with auth state.
 **Goal:** manage the order lifecycle.
 
 **Will deliver:**
-- Order history and detail pages.
 - Status transitions (placed → confirmed → shipped → delivered).
 - Cancellation rules per status.
 - Refund workflow linked to payment status.
 - Admin order listing and status updates.
+- Customer status timeline and tracking details on the Phase 7 order pages.
 
 ---
 
@@ -1324,6 +1486,21 @@ Test accounts were removed afterwards; the client build and both test suites
 The UI test user was deleted from MongoDB after the run. The only API request
 added by this refresh was the existing session bootstrap; no endpoints changed.
 
+### Verified Phase 7 results (46 API checks + browser)
+
+| Area | Checks |
+|---|---|
+| Addresses | anonymous `401`, invalid body `400` with 6 field errors, first auto-default, one default after switching, edit, delete non-default, delete default promotes remaining |
+| Quote | subtotal from `priceAtAdd`, ₹49 shipping below the threshold, free shipping at quantity 3, GST inclusive (`7612` on `49900`), total `54800` |
+| Order errors | unknown address `404`, coupon `400`, empty cart `400` |
+| Order creation | `201`, `ORD-YYYYMMDD-XXXXXX`, `placed` / `pending`, item + address snapshots, totals match the quote, cart cleared, stock −1 |
+| Order reads | list includes the new order, detail `200`, another user `404`, snapshot survives address deletion |
+| Browser | address empty state, validation mapping, add/second/default/edit, two-step delete, checkout pre-selection and totals, order placement, confirmation, history, empty-cart checkout, guest redirects, no console errors |
+
+`typecheck`, `lint`, `format:check` and `build` pass for both apps. The in-app
+browser still reports a 0×0 hidden viewport, so checks used DOM snapshots,
+DOM-triggered interactions, network and console logs.
+
 ---
 
 ## 12. Engineering workflow
@@ -1362,6 +1539,13 @@ added by this refresh was the existing session bootstrap; no endpoints changed.
 | `0e6367f` | feat(client): add React frontend foundation |
 | `fa30e3e` | docs: record phase 4 commit in project guide |
 | `7295129` | feat(ui): refresh storefront design and shared primitives |
+| `59e2e10` | docs: record UI refresh commit in project guide |
+| `5878956` | feat(storefront): add catalogue, product detail and profile management |
+| `05d82a7` | docs: record phase 5 in project guide |
+| `4d9c6d6` | feat(storefront): add cart and wishlist with server-side pricing |
+| `94c4953` | docs: record phase 6 in project guide and API contract |
+| `43864c0` | docs: correct phase 6 concepts note |
+| `84d6943` | feat(storefront): add checkout, addresses and order placement |
 
 ---
 
@@ -1570,9 +1754,42 @@ the same refresh cookie twice; the second would look like token reuse and clear
 the session. A module-level promise makes both effect runs await one request.
 
 **Q47. What is the difference between server state and session state here?**  
-Server state (products, categories, ping) is cached, retried and invalidated by
+Server state (products, categories, orders) is cached, retried and invalidated by
 TanStack Query. Session state (who is signed in) lives in a small context and
 changes only on login, refresh or logout.
+
+**Q48. Why does the server recompute the order total when the client already
+shows a quote?**  
+The quote is a display convenience. Anything sent by a browser can be edited, so
+`POST /orders` re-reads the cart, re-runs the pricing function and ignores any
+client price. The saved order, not the rendered number, is the source of truth.
+
+**Q49. Why is tax inclusive instead of added on top?**  
+Indian retail prices are normally quoted tax-inclusive. The stored `tax` is the
+portion already inside the price: `round(subtotal × 18 / 118)`. Adding 18% on top
+would overcharge and disagree with the product page.
+
+**Q50. How is stock kept consistent without transactions?**  
+Each line uses a conditional update:
+`Product.updateOne({ _id, isActive: true, stock: { $gte: qty } }, { $inc: { stock: -qty } })`.
+If `modifiedCount` is 0 the line cannot be fulfilled and the request fails; any
+earlier decrements are compensated with `$inc` before the error is rethrown.
+A MongoDB transaction would be cleaner on a replica set.
+
+**Q51. Why return 404 for another user's order instead of 403?**  
+Authorization is applied inside the query (`{ _id, userId }`). A 403 would
+confirm that the id exists; a 404 keeps the resource invisible and simplifies
+the code path.
+
+**Q52. Why snapshot the address on the order if the address book still exists?**  
+The customer may edit or delete the address later. The order must keep the
+address that was actually used, exactly like it keeps the product name and price.
+
+**Q53. How is "exactly one default address" enforced?**  
+The service owns the invariant: the first address is created default, setting a
+default unsets others with one `updateMany`, the last remaining address cannot
+be un-defaulted, and deleting the default promotes the oldest remaining one. No
+unique partial index is required because all writes go through the service.
 
 ### "Explain the project in a deeper 2 minutes"
 
@@ -1590,7 +1807,14 @@ changes only on login, refresh or logout.
 > and pagination, verified by 34 checks. Phase 4 adds the React foundation:
 > a typed Axios layer with silent token refresh, an auth context that restores
 > the session from the httpOnly cookie, guarded routes, a responsive app shell,
-> and live catalogue data on the home page."
+> and live catalogue data on the home page. Phase 5 adds the shopping
+> experience: catalogue filters in the URL, product and department pages, and
+> profile/password management. Phase 6 adds a server-side cart with price
+> snapshots and a wishlist. Phase 7 closes the loop: an address book with one
+> enforced default, a server-computed checkout quote with inclusive GST and a
+> shipping threshold, and order creation that snapshots items and address,
+> decrements stock with rollback and clears the cart, followed by order history
+> and detail pages."
 
 ---
 
@@ -1613,6 +1837,10 @@ changes only on login, refresh or logout.
 | Idempotent | Repeating the operation gives the same result |
 | Optimistic update | Applying a change in the UI before the server confirms it, then rolling back on error |
 | Price snapshot | The price stored on a cart line when the item was added, independent of later catalogue edits |
+| Address snapshot | A copy of the delivery address stored on the order, unaffected by later edits |
+| GST-inclusive | Tax already contained in the quoted price (`round(total × 18 / 118)`) |
+| Compensating rollback | Undoing earlier successful writes when a later step fails |
+| Default address | The single address pre-selected at checkout |
 | `select: false` | Mongoose field hidden unless explicitly requested |
 | Hydrated document | Mongoose document instance, not a plain object |
 | CSRF | Cross-site request forgery |
@@ -1626,7 +1854,10 @@ changes only on login, refresh or logout.
 
 | Area | Limitation | Plan |
 |---|---|---|
-| Frontend depth | Catalogue, detail, cart, wishlist and account screens are built; checkout is not | Phase 7 |
+| Payments | Orders are always created with `paymentStatus: pending`; no gateway is wired | Phase 8 |
+| Order lifecycle | Only the `placed` status exists; no cancellation or tracking timeline | Phase 9 |
+| Coupons | The hook rejects every code; no coupon documents or discounts | Phase 10 |
+| Stock safety | Conditional updates with rollback, not MongoDB transactions | Transactions need a replica set; document in Phase 12 |
 | Profile API | Name and password only; email changes and avatar upload are not built | Later |
 | Client tests | Manual browser checks only | Phase 11 |
 | UI verification | No screenshots captured; in-app browser had no viewport | Re-check visuals when a real browser is available |
@@ -1649,9 +1880,9 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 7 — Checkout and Address Management: address CRUD with a default address,
-a checkout summary computed in integer paise, coupon validation hook, order
-draft creation with item and address snapshots, and the checkout UI.
+Phase 8 — Payment Integration: Razorpay order creation for a placed order,
+signature verification, a raw-body webhook with signature validation, failure
+and abandonment handling, and one idempotent payment record per order.
 
 Do not start until the reviewer explicitly says:
 

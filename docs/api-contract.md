@@ -1,7 +1,7 @@
 # API Contract
 
 Each endpoint marked with a phase is implemented as that phase completes.
-Phases 1–6 are live.
+Phases 1–7 are live.
 
 ## Conventions
 
@@ -101,15 +101,47 @@ Password change rules:
   cleared, the refresh cookie is cleared, and the response message asks the
   client to sign in again.
 
-## Addresses — Phase 7
+## Addresses — Phase 7 (implemented)
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| GET | `/addresses` | auth | List own addresses |
+| GET | `/addresses` | auth | List own addresses, default first |
 | POST | `/addresses` | auth | Add address |
 | PATCH | `/addresses/:id` | auth | Edit own address |
 | DELETE | `/addresses/:id` | auth | Remove own address |
 | PATCH | `/addresses/:id/default` | auth | Set default address |
+
+Every response wraps `data: { addresses: AddressDTO[] }` so the client can
+replace its cache in one write. `AddressDTO`:
+
+```json
+{
+  "id": "6612f0c9b8a4e1a2c3d4e5f6",
+  "label": "Home",
+  "fullName": "Aarav Sharma",
+  "phone": "9876543210",
+  "line1": "12 Test Lane",
+  "line2": null,
+  "city": "Nagpur",
+  "state": "Maharashtra",
+  "pincode": "440001",
+  "isDefault": true,
+  "createdAt": "2026-11-07T09:00:00.000Z",
+  "updatedAt": "2026-11-07T09:00:00.000Z"
+}
+```
+
+Create body: `{ label, fullName, phone, line1, line2?, city, state, pincode,
+isDefault? }`. `PATCH /addresses/:id` accepts the same fields, all optional, with
+at least one required. Validation: phone `^[6-9]\d{9}$`, pincode `^\d{6}$`.
+
+Rules:
+
+- The first address for a user is always default.
+- Exactly one address is default; promoting one unsets the previous one.
+- The only address cannot be un-defaulted (`400`).
+- Deleting the default promotes the oldest remaining address.
+- Addresses are queried with `userId`, so another user's id returns `404`.
 
 ## Categories — Phase 3
 
@@ -224,13 +256,67 @@ quantity above stock, `400` quantity outside 1–10.
 | PATCH | `/admin/coupons/:id` | admin | Update |
 | DELETE | `/admin/coupons/:id` | admin | Deactivate |
 
-## Orders — Phase 7 / 9
+## Orders — Phase 7 (implemented)
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| POST | `/orders` | auth | Place order from cart + address + coupon |
-| GET | `/orders` | auth | Own order history |
+| POST | `/orders/quote` | auth | Server-computed checkout quote for the current cart |
+| POST | `/orders` | auth | Place order `{ addressId, couponCode? }` |
+| GET | `/orders` | auth | Own order history, `?page=1&limit=10` (max 50) |
 | GET | `/orders/:id` | auth | Own order detail |
+
+Pricing is always computed on the server in integer paise from the cart's locked
+`priceAtAdd` values:
+
+| Rule | Value |
+|---|---|
+| `subtotal` | Sum of `priceAtAdd × quantity` |
+| `discount` | 0 until coupons land in Phase 10 |
+| `discountedSubtotal` | `max(subtotal - discount, 0)` |
+| `shipping` | 0 when empty or ≥ 99,900; otherwise 4,900 |
+| `tax` | `round(discountedSubtotal × 18 / 118)` (GST already inside the price) |
+| `total` | `discountedSubtotal + shipping` |
+
+Quote response `data: { quote }`:
+
+```json
+{
+  "pricing": {
+    "subtotal": 49900,
+    "tax": 7612,
+    "shipping": 4900,
+    "discount": 0,
+    "total": 54800
+  },
+  "itemCount": 1,
+  "priceChanged": false,
+  "couponCode": null
+}
+```
+
+Place-order response `data: { order }` with `201`. `OrderDTO` contains
+`id`, `orderNumber` (`ORD-YYYYMMDD-XXXXXX`), `items[]`, `address`, `pricing`,
+`couponCode`, `status`, `paymentStatus`, `createdAt` and `updatedAt`. Each item
+snapshots `productId`, `name`, `slug`, `image`, `price`, `quantity`, `lineTotal`.
+The address snapshots `fullName`, `phone`, `line1`, `line2`, `city`, `state`,
+`pincode`.
+
+Rules and errors:
+
+- Empty cart → `400 Your cart is empty`.
+- Unknown or another user's address → `404 Address not found`.
+- A supplied coupon code → `400 Coupon codes are not available yet`.
+- Insufficient stock → `409 <product> no longer has <n> units in stock`; any
+  stock already decremented for earlier lines is restored.
+- On success stock is decremented, the cart is cleared, and the order is saved
+  with `status: placed` and `paymentStatus: pending`.
+- `GET /orders` returns `meta: { page, limit, total, totalPages }`; list and
+  detail are scoped to the signed-in user, so another user's id returns `404`.
+
+## Orders — Phase 9 (planned)
+
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
 | PATCH | `/orders/:id/cancel` | auth | Cancel if status allows |
 | GET | `/admin/orders` | admin | All orders, filter by status/user |
 | GET | `/admin/orders/:id` | admin | Order detail |
@@ -263,7 +349,7 @@ quantity above stock, `400` quantity outside 1–10.
 | 2 | `/auth/*`, `/admin/ping` |
 | 3 | `/categories/*`, `/products/*` |
 | 6 | `/cart/*`, `/wishlist/*` |
-| 7 | `/addresses/*`, `POST /orders`, `GET /orders*` |
+| 7 | `/addresses/*`, `POST /orders/quote`, `POST /orders`, `GET /orders/*` |
 | 8 | `/payments/*` |
 | 9 | cancel + admin order routes |
 | 10 | `/coupons/*`, `/admin/*` |

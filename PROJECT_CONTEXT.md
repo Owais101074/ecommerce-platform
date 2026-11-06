@@ -6,9 +6,9 @@ For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-07
-**Current phase:** Phase 6 — Cart and Wishlist (complete, awaiting review)
-**Latest work:** server-side cart and wishlist, cart UI, optimistic wishlist toggles
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6
+**Current phase:** Phase 7 — Checkout and Address Management (complete, awaiting review)
+**Latest work:** address book, server-priced checkout quote, order placement with snapshots, order history/detail
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -114,6 +114,12 @@ ecommerce-platform/
 | Cart limits | 10 units per line; stock checked on add and update | Prevents overselling and accidental bulk orders |
 | Wishlist toggle | TanStack Query optimistic update with rollback | Instant heart feedback without waiting for the network |
 | Notifications | Lightweight toast context (3.5s) | Local feedback for cart and wishlist mutations without a dependency |
+| Checkout pricing | Server quote + server recompute on order; client sends no prices | Totals cannot be tampered with in the browser |
+| Tax | GST-inclusive, `round(subtotal × 18 / 118)` | Matches Indian retail display, stays in integer paise |
+| Shipping | Free from ₹999 (99,900 paise), otherwise ₹49 (4,900 paise) | One clear threshold measured after discount |
+| Address default | Exactly one default; first address auto-default; delete promotes oldest | Predictable checkout pre-selection without a second source of truth |
+| Stock on order | Conditional `$gte` decrement per line with rollback | Prevents overselling without MongoDB transactions |
+| Order history | Item and address snapshots | Editing a product or address never rewrites a past order |
 | Testing | Manual + Postman per phase; formal suite in Phase 11 | Learn behavior before automating |
 
 ## 5. Database collections
@@ -131,8 +137,8 @@ ecommerce-platform/
 | `reviews` | userId, productId, rating, comment | unique (userId, productId) |
 | `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
 
-**Implemented:** `users`, `categories`, `products`, `carts`, `wishlists`. The
-remaining collections are planned for Phases 7–10.
+**Implemented:** `users`, `categories`, `products`, `carts`, `wishlists`,
+`addresses`, `orders`. The remaining collections are planned for Phases 8–10.
 
 ## 6. API surface
 
@@ -147,12 +153,15 @@ Marked complete here as each phase lands.
 `PATCH /users/me/password` (Phase 5); `GET /cart`, `POST /cart/items`,
 `PATCH /cart/items/:productId`, `DELETE /cart/items/:productId`, `DELETE /cart`,
 `GET /wishlist`, `POST /wishlist/:productId`, `DELETE /wishlist/:productId`
-(Phase 6).
+(Phase 6); `GET /addresses`, `POST /addresses`, `PATCH /addresses/:id`,
+`PATCH /addresses/:id/default`, `DELETE /addresses/:id`, `POST /orders/quote`,
+`POST /orders`, `GET /orders`, `GET /orders/:id` (Phase 7).
 
 **Client routes:** `/` (public), `/products`, `/products/:slug`,
-`/categories/:slug`, `/login`, `/register`, `/cart` and `/wishlist` (signed in),
-`/account` (signed in), `/admin` (admin), `*` (404). Catalogue filters are
-URL-driven (`q`, `category`, `min`, `max`, `rating`, `inStock`, `sort`, `page`).
+`/categories/:slug`, `/login`, `/register`, `/cart`, `/wishlist`, `/addresses`,
+`/checkout`, `/orders`, `/orders/:id` and `/account` (signed in), `/admin`
+(admin), `*` (404). Catalogue filters are URL-driven (`q`, `category`, `min`,
+`max`, `rating`, `inStock`, `sort`, `page`).
 
 ## 7. Environment
 
@@ -334,7 +343,40 @@ eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@type
       save/remove, guest redirect, price-change banner with snapshot restoration,
       no React console errors
 - [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
-- [ ] Close Phase 6 review
+- [x] Close Phase 6 review
+
+### Phase 7 — Checkout and Address Management
+
+- [x] `addresses` collection scoped by `userId`: label, full name, phone, line1,
+      line2, city, state, pincode, `isDefault`, timestamps
+- [x] Address endpoints: `GET /addresses`, `POST /addresses`,
+      `PATCH /addresses/:id`, `PATCH /addresses/:id/default`,
+      `DELETE /addresses/:id`
+- [x] Address rules: first address auto-default, one default enforced, the only
+      address cannot lose default status, deleting the default promotes the
+      oldest remaining address
+- [x] `orders` collection with unique order number, item snapshots, address
+      snapshot, integer pricing fields, order status and payment status
+- [x] `order.pricing.ts`: discounted subtotal, GST-inclusive tax at 18%, free
+      shipping from ₹999, ₹49 below it
+- [x] `POST /orders/quote` with `itemCount`, `couponCode` and `priceChanged`
+- [x] `POST /orders` recomputes pricing, snapshots cart and address, decrements
+      stock conditionally with rollback, clears the cart
+- [x] `GET /orders` with pagination and `GET /orders/:id`, both owner-scoped
+- [x] Coupon hook rejects supplied codes until Phase 10
+- [x] Client address API, order API, types and TanStack Query hooks with cache
+      writes
+- [x] `/addresses` inline add/edit form, default switch, two-step delete
+- [x] `/checkout` address selection, inline creation, quote summary, disabled
+      submit until ready
+- [x] `/orders` history with pagination and `/orders/:id` detail with snapshots
+- [x] Cart checkout link, account/footer links, route guards for new pages
+- [x] Server live checks (46): address invariants, quote maths, order creation,
+      snapshots, cart clearing, stock decrement, ownership, empty-cart rejection
+- [x] Browser checks: address CRUD/default, checkout quote, order placement,
+      history, empty-cart state, guest redirects, no console errors
+- [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
+- [ ] Close Phase 7 review
 
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
@@ -352,7 +394,7 @@ twice.
 | 4 | Storefront UI refresh (design system, shell, auth layout, pages) | done |
 | 5 | Catalogue listing, product detail, department pages, profile + password UI | done |
 | 6 | Cart + wishlist | done |
-| 7 | Addresses + checkout | not started |
+| 7 | Addresses, checkout quote, orders, order history/detail | done |
 | 8 | Razorpay integration | not started |
 | 9 | Order lifecycle + cancellation/refund | not started |
 | 10 | Admin dashboard + Cloudinary | not started |
