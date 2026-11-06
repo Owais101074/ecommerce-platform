@@ -38,9 +38,9 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Database | MongoDB 8.2 + Mongoose 9 |
 | Frontend | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
 | Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 5 complete (catalogue, product detail, departments, profile), awaiting review |
-| Completed phases | 0, 1, 2, 3, 4, 5 |
-| Next phase | Phase 6 — Cart and Wishlist |
+| Current phase | Phase 6 complete (cart and wishlist), awaiting review |
+| Completed phases | 0, 1, 2, 3, 4, 5, 6 |
+| Next phase | Phase 7 — Checkout and Address Management |
 | API base | `http://localhost:5000/api/v1` |
 | Client base | `http://localhost:5173` |
 | Database (dev) | `mongodb://127.0.0.1:27017/ecommerce_dev` |
@@ -581,12 +581,20 @@ invalid token, 403 wrong role, 404 not found, 409 duplicate, 422 business rule
 | GET | `/users/me` | access token | 200, current profile |
 | PATCH | `/users/me` | access token | update name, returns the user |
 | PATCH | `/users/me/password` | access token | verify current password, revoke sessions, clear cookie |
+| GET | `/cart` | access token | cart with computed totals and price-change flag |
+| POST | `/cart/items` | access token | add `{ productId, quantity }` (quantity 1–10) |
+| PATCH | `/cart/items/:productId` | access token | set quantity, re-checks stock |
+| DELETE | `/cart/items/:productId` | access token | remove one line |
+| DELETE | `/cart` | access token | clear the cart |
+| GET | `/wishlist` | access token | active products in save order |
+| POST | `/wishlist/:productId` | access token | idempotent add |
+| DELETE | `/wishlist/:productId` | access token | idempotent remove |
 
 ### 8.3 Planned endpoints by phase
 
 | Phase | Endpoints |
 |---|---|
-| 6 | `/cart/*`, `/wishlist/*` |
+| 7 | `/addresses/*`, `POST /orders`, `GET /orders*` |
 | 7 | `/addresses/*`, `POST /orders`, `GET /orders*` |
 | 8 | `/payments/orders`, `/payments/verify`, `/payments/webhook` |
 | 9 | cancel order, admin order routes |
@@ -820,16 +828,62 @@ and validating business rules (password reuse) in the service layer.
 
 ---
 
-### Phase 6 — Cart and Wishlist — **PLANNED**
+### Phase 6 — Cart and Wishlist — **DONE**
 
-**Goal:** let customers save products.
+**Goal:** let customers save products and hold a trustworthy cart.
 
-**Will deliver:**
-- Server-side cart: add, update quantity, remove, clear.
-- Price-at-add snapshot and computed totals.
-- Stock validation.
-- Wishlist add/remove/list.
-- TanStack Query mutations with optimistic updates (where appropriate).
+**Delivered:**
+- `carts` collection: one cart per user (`userId` unique), embedded items
+  `{ productId, quantity, priceAtAdd }` with the price stored in integer paise.
+- Cart endpoints under `authenticate`: `GET /cart`, `POST /cart/items`,
+  `PATCH /cart/items/:productId`, `DELETE /cart/items/:productId` and
+  `DELETE /cart`; every response returns the full, re-computed cart.
+- `cart.mapper.ts` filters inactive/missing products and computes `lineTotal`,
+  `itemCount`, `subtotal`, `currentSubtotal` and a `priceChanged` flag.
+- Cart rules: 1–10 units per line, product must exist and be active, stock is
+  checked on add and update, out-of-stock and over-stock return `409`, and
+  missing lines return `404`.
+- `wishlists` collection with one document per user; `$addToSet` and `$pull`
+  make add and remove idempotent, and inactive products are filtered on read.
+- Shared `loadProductDTOs` helper in the product service so cart and wishlist
+  reuse the same product shape as the catalogue.
+- Client data layer: `useCart`, `useCartCount`, `useWishlist`,
+  `useWishlistCount`, and mutations that write the server cart into the
+  TanStack Query cache; wishlist toggles are optimistic with rollback.
+- Toast provider (bottom-right, 3.5s auto-dismiss) for mutation feedback.
+- `QuantityStepper`, `AddToCartButton`, `WishlistButton` and `ProductActions`,
+  reused on product cards and the product detail purchase panel.
+- `/cart`: rows show the snapshot price and the current catalogue price when
+  they differ, stock warnings, quantity stepper, line totals, two-step clear
+  and a sticky order summary with checkout deferred to Phase 7.
+- `/wishlist`: saved products in save order with empty, loading and error
+  states.
+- Header cart and wishlist icons with live counts; signed-in footer links and
+  `RequireAuth` guards on both routes.
+
+**Verification:** server live checks covered auth-required `401`s, empty cart,
+add/increment/update/remove/clear, quantity over 10 (`400`), stock and
+out-of-stock conflicts (`409`), repeated remove (`404`), and idempotent
+wishlist add/remove. A temporary admin price change proved the snapshot:
+the cart kept ₹499, showed “now ₹549” plus a price-change banner, then returned
+to normal after the price was restored. Browser checks covered adding from a
+card and the detail page (quantity 3), header badges, cart totals, two-step
+clear, wishlist save/remove, and the guest redirect from `/cart` to `/login`.
+`typecheck`, `lint`, `format:check` and `build` pass for both apps. The in-app
+browser still reports a 0×0 hidden viewport, so checks used DOM snapshots,
+DOM-triggered interactions, console and network logs.
+
+**Be able to explain:** why the cart stores `priceAtAdd` instead of reading the
+current price, why totals are computed on the server, why quantity is validated
+against both a hard limit and live stock, why wishlist add/remove use
+`$addToSet`/`$pull`, when an optimistic update is appropriate, and why the
+wishlist query is disabled for guests.
+
+**Key concepts learned:** embedded subdocuments vs references, unique-index
+upserts, atomic array operators, DTO mapping with a product lookup map, Express
+route ordering for `DELETE /cart` vs `/cart/items/:id`, TanStack Query keys and
+cache writes, optimistic mutation lifecycles (`onMutate`/`onError`/`onSettled`),
+derived counts from cached queries, and guarding UI routes with auth state.
 
 ---
 
@@ -1557,6 +1611,8 @@ changes only on login, refresh or logout.
 | Paise | 1/100 of a rupee; integer money unit |
 | Slug | URL-friendly unique name, e.g. `wireless-mouse` |
 | Idempotent | Repeating the operation gives the same result |
+| Optimistic update | Applying a change in the UI before the server confirms it, then rolling back on error |
+| Price snapshot | The price stored on a cart line when the item was added, independent of later catalogue edits |
 | `select: false` | Mongoose field hidden unless explicitly requested |
 | Hydrated document | Mongoose document instance, not a plain object |
 | CSRF | Cross-site request forgery |
@@ -1570,7 +1626,7 @@ changes only on login, refresh or logout.
 
 | Area | Limitation | Plan |
 |---|---|---|
-| Frontend depth | Catalogue, detail, department and account screens are built; no cart or checkout UI yet | Phase 6 |
+| Frontend depth | Catalogue, detail, cart, wishlist and account screens are built; checkout is not | Phase 7 |
 | Profile API | Name and password only; email changes and avatar upload are not built | Later |
 | Client tests | Manual browser checks only | Phase 11 |
 | UI verification | No screenshots captured; in-app browser had no viewport | Re-check visuals when a real browser is available |
@@ -1593,9 +1649,9 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 6 — Cart and Wishlist: server-side carts with quantity and price-at-add
-snapshots, stock validation, wishlist add/remove/list, and the client mutations
-(TanStack Query) that drive the shopping UI.
+Phase 7 — Checkout and Address Management: address CRUD with a default address,
+a checkout summary computed in integer paise, coupon validation hook, order
+draft creation with item and address snapshots, and the checkout UI.
 
 Do not start until the reviewer explicitly says:
 

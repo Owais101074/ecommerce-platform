@@ -105,6 +105,29 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   primitives, plus `useProduct` and `useCategory` query hooks.
 - **Phase 5** — header, home CTAs, category cards and product cards now link into
   the catalogue, product and department routes.
+- **Phase 6** — `carts` collection with one cart per user and embedded
+  `{ productId, quantity, priceAtAdd }` items.
+- **Phase 6** — cart endpoints: `GET /cart`, `POST /cart/items`,
+  `PATCH /cart/items/:productId`, `DELETE /cart/items/:productId`,
+  `DELETE /cart`; every response returns server-computed totals.
+- **Phase 6** — price-at-add snapshots in integer paise plus a `currentSubtotal`
+  and `priceChanged` flag when catalogue prices move.
+- **Phase 6** — cart rules: max 10 units per line, stock checks on add and update,
+  inactive products filtered out, and clear 404/409 conflicts.
+- **Phase 6** — `wishlists` collection with one document per user and
+  `$addToSet` / `$pull` operations for idempotent add and remove.
+- **Phase 6** — wishlist endpoints: `GET /wishlist`, `POST /wishlist/:productId`,
+  `DELETE /wishlist/:productId`.
+- **Phase 6** — client data layer: `useCart`, `useCartCount`, `useWishlist`,
+  `useWishlistCount` and mutations that update the TanStack Query cache.
+- **Phase 6** — optimistic wishlist toggles with rollback on failure.
+- **Phase 6** — toast provider for success and error feedback.
+- **Phase 6** — `QuantityStepper`, `AddToCartButton`, `WishlistButton` and
+  `ProductActions` primitives, wired into product cards and the detail page.
+- **Phase 6** — `/cart` and `/wishlist` pages behind `RequireAuth`, with empty,
+  loading, error, price-change, stock-warning and two-step clear states.
+- **Phase 6** — header cart/wishlist icons with live counts; both routes added
+  to the authenticated footer links.
 
 ### Fixed
 

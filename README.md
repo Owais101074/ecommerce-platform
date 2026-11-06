@@ -34,7 +34,7 @@ ecommerce-platform/
 | 3 | Products and categories | Complete |
 | 4 | Frontend foundation + storefront UI refresh | Complete |
 | 5 | Customer shopping experience | Complete |
-| 6 | Cart and wishlist | Not started |
+| 6 | Cart and wishlist | Complete |
 | 7 | Checkout and addresses | Not started |
 | 8 | Payments | Not started |
 | 9 | Order management | Not started |

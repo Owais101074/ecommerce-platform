@@ -1,7 +1,7 @@
 # API Contract
 
 Each endpoint marked with a phase is implemented as that phase completes.
-Phases 1–3 are live.
+Phases 1–6 are live.
 
 ## Conventions
 
@@ -170,23 +170,49 @@ phase; no review API exists yet.
 | PATCH | `/reviews/:id` | auth (owner) | Edit review |
 | DELETE | `/reviews/:id` | auth (owner/admin) | Delete review |
 
-## Cart — Phase 6
+## Cart — Phase 6 (implemented)
+
+Every response wraps `data: { cart }`. The cart shape is:
+
+```json
+{
+  "items": [
+    {
+      "product": { "...": "ProductDTO" },
+      "quantity": 2,
+      "priceAtAdd": 49900,
+      "lineTotal": 99800
+    }
+  ],
+  "itemCount": 2,
+  "subtotal": 99800,
+  "currentSubtotal": 109800,
+  "priceChanged": true
+}
+```
+
+`subtotal` uses `priceAtAdd`; `currentSubtotal` uses current catalogue prices;
+`priceChanged` is true when they differ. Inactive or deleted products are
+filtered out of the response.
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
 | GET | `/cart` | auth | Cart with computed totals |
-| POST | `/cart/items` | auth | Add `{ productId, quantity }` |
-| PATCH | `/cart/items/:productId` | auth | Set quantity |
-| DELETE | `/cart/items/:productId` | auth | Remove item |
+| POST | `/cart/items` | auth | Add `{ productId, quantity }`; quantity 1–10, defaults to 1 |
+| PATCH | `/cart/items/:productId` | auth | Set quantity 1–10, re-checks stock |
+| DELETE | `/cart/items/:productId` | auth | Remove item; 404 if absent |
 | DELETE | `/cart` | auth | Clear cart |
 
-## Wishlist — Phase 6
+Errors: `404` product/line not found, `409` product unavailable, out of stock or
+quantity above stock, `400` quantity outside 1–10.
+
+## Wishlist — Phase 6 (implemented)
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| GET | `/wishlist` | auth | List wishlist products |
-| POST | `/wishlist/:productId` | auth | Add |
-| DELETE | `/wishlist/:productId` | auth | Remove |
+| GET | `/wishlist` | auth | Active products in save order |
+| POST | `/wishlist/:productId` | auth | Idempotent add; 404 if the product is missing |
+| DELETE | `/wishlist/:productId` | auth | Idempotent remove |
 
 ## Coupons — Phase 10
 

@@ -5,10 +5,10 @@ every phase. If chat context is lost, this file is the source of truth.
 For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
-**Last updated:** 2026-11-04
-**Current phase:** Phase 5 — Customer Shopping Experience (complete, awaiting review)
-**Latest work:** catalogue, product detail, department pages, profile and password screens
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5
+**Last updated:** 2026-11-07
+**Current phase:** Phase 6 — Cart and Wishlist (complete, awaiting review)
+**Latest work:** server-side cart and wishlist, cart UI, optimistic wishlist toggles
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -110,6 +110,10 @@ ecommerce-platform/
 | Visual design | Warm editorial palette (cream/paper, forest green, terracotta), Fraunces + Plus Jakarta Sans, lucide-react icons | A curated-store feel, not a default dashboard; all tokens live in `index.css` |
 | Client routing | React Router 7 `createBrowserRouter` | Data-router ready for loaders later |
 | Cart/wishlist | Persisted server-side | Cross-device consistency |
+| Cart pricing | `priceAtAdd` snapshot per line; totals computed on the server | Cart totals are trustworthy and historical prices survive catalogue edits |
+| Cart limits | 10 units per line; stock checked on add and update | Prevents overselling and accidental bulk orders |
+| Wishlist toggle | TanStack Query optimistic update with rollback | Instant heart feedback without waiting for the network |
+| Notifications | Lightweight toast context (3.5s) | Local feedback for cart and wishlist mutations without a dependency |
 | Testing | Manual + Postman per phase; formal suite in Phase 11 | Learn behavior before automating |
 
 ## 5. Database collections
@@ -127,8 +131,8 @@ ecommerce-platform/
 | `reviews` | userId, productId, rating, comment | unique (userId, productId) |
 | `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
 
-**Implemented:** `users`, `categories`, `products`. The remaining collections are
-planned for Phases 6–10.
+**Implemented:** `users`, `categories`, `products`, `carts`, `wishlists`. The
+remaining collections are planned for Phases 7–10.
 
 ## 6. API surface
 
@@ -140,12 +144,15 @@ Marked complete here as each phase lands.
 `GET /categories`, `GET /categories/:slug`, category admin CRUD,
 `GET /products`, `GET /products/:slug`, product admin CRUD, and
 `PATCH /products/:id/stock` (Phase 3); `GET /users/me`, `PATCH /users/me`,
-`PATCH /users/me/password` (Phase 5).
+`PATCH /users/me/password` (Phase 5); `GET /cart`, `POST /cart/items`,
+`PATCH /cart/items/:productId`, `DELETE /cart/items/:productId`, `DELETE /cart`,
+`GET /wishlist`, `POST /wishlist/:productId`, `DELETE /wishlist/:productId`
+(Phase 6).
 
 **Client routes:** `/` (public), `/products`, `/products/:slug`,
-`/categories/:slug`, `/login`, `/register`, `/account` (signed in), `/admin`
-(admin), `*` (404). Catalogue filters are URL-driven (`q`, `category`, `min`,
-`max`, `rating`, `inStock`, `sort`, `page`).
+`/categories/:slug`, `/login`, `/register`, `/cart` and `/wishlist` (signed in),
+`/account` (signed in), `/admin` (admin), `*` (404). Catalogue filters are
+URL-driven (`q`, `category`, `min`, `max`, `rating`, `inStock`, `sort`, `page`).
 
 ## 7. Environment
 
@@ -294,7 +301,40 @@ eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@type
 - [x] Browser checks for listing, filters, search, detail, department,
       profile update and password change; no React console errors
 - [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
-- [ ] Close Phase 5 review
+- [x] Close Phase 5 review
+
+### Phase 6 — Cart and Wishlist
+
+- [x] `carts` collection: one cart per user (`userId` unique), embedded items
+      with `productId`, `quantity` and `priceAtAdd` in integer paise
+- [x] Cart endpoints: `GET /cart`, `POST /cart/items`,
+      `PATCH /cart/items/:productId`, `DELETE /cart/items/:productId`,
+      `DELETE /cart`
+- [x] `cart.mapper.ts` computes `lineTotal`, `itemCount`, `subtotal`,
+      `currentSubtotal` and `priceChanged`; missing/inactive products filtered
+- [x] Cart rules: quantity 1–10, stock checks on add and update, out-of-stock
+      and unavailable-product conflicts, 404 for missing lines
+- [x] `wishlists` collection with `$addToSet` / `$pull` and active-only listing
+- [x] Wishlist endpoints: `GET /wishlist`, `POST /wishlist/:productId`,
+      `DELETE /wishlist/:productId`
+- [x] Shared `loadProductDTOs` in the product service for cart and wishlist
+- [x] Client data layer: `useCart`, `useCartCount`, `useWishlist`,
+      `useWishlistCount`, cache-updating mutations, optimistic wishlist toggle
+- [x] Toast provider for mutation feedback
+- [x] `QuantityStepper`, `AddToCartButton`, `WishlistButton`, `ProductActions`;
+      wired into product cards and the product detail purchase panel
+- [x] `/cart` page: rows with snapshot and current price, stock warnings,
+      quantity stepper, line totals, two-step clear, sticky summary
+- [x] `/wishlist` page with empty/loading/error states
+- [x] Header cart/wishlist icons with live counts; auth-aware footer links
+- [x] Route guards redirect guests from `/cart` and `/wishlist` to login
+- [x] Server live checks: auth required, add/increment/update/remove/clear,
+      quantity and stock conflicts, out-of-stock, idempotent wishlist add/remove
+- [x] Browser checks: add from card and detail, quantity 3, clear cart, wishlist
+      save/remove, guest redirect, price-change banner with snapshot restoration,
+      no React console errors
+- [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
+- [ ] Close Phase 6 review
 
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
@@ -311,7 +351,7 @@ twice.
 | 4 | Vite + React + Tailwind + Router + Query scaffold | done |
 | 4 | Storefront UI refresh (design system, shell, auth layout, pages) | done |
 | 5 | Catalogue listing, product detail, department pages, profile + password UI | done |
-| 6 | Cart + wishlist | not started |
+| 6 | Cart + wishlist | done |
 | 7 | Addresses + checkout | not started |
 | 8 | Razorpay integration | not started |
 | 9 | Order lifecycle + cancellation/refund | not started |
