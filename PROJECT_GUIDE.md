@@ -880,10 +880,10 @@ against both a hard limit and live stock, why wishlist add/remove use
 wishlist query is disabled for guests.
 
 **Key concepts learned:** embedded subdocuments vs references, unique-index
-upserts, atomic array operators, DTO mapping with a product lookup map, Express
-route ordering for `DELETE /cart` vs `/cart/items/:id`, TanStack Query keys and
-cache writes, optimistic mutation lifecycles (`onMutate`/`onError`/`onSettled`),
-derived counts from cached queries, and guarding UI routes with auth state.
+upserts, atomic array operators, DTO mapping with a product lookup map,
+router-level `authenticate` middleware, TanStack Query keys and cache writes,
+optimistic mutation lifecycles (`onMutate`/`onError`/`onSettled`), derived
+counts from cached queries, and guarding UI routes with auth state.
 
 ---
 
