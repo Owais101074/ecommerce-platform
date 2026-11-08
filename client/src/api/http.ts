@@ -16,11 +16,22 @@ export const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function readCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 http.interceptors.request.use((config) => {
   const token = getAccessToken();
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  const csrfToken = readCookie('csrfToken');
+
+  if (csrfToken) {
+    config.headers['X-CSRF-Token'] = csrfToken;
   }
 
   return config;
@@ -32,11 +43,17 @@ const NO_REFRESH_ROUTES = ['/auth/login', '/auth/register', '/auth/refresh', '/a
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
+  const csrfToken = readCookie('csrfToken');
+
   try {
     const { data } = await axios.post<ApiSuccess<AuthSession>>(
       `${API_BASE_URL}/auth/refresh`,
       undefined,
-      { withCredentials: true, timeout: 15_000 },
+      {
+        withCredentials: true,
+        timeout: 15_000,
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : undefined,
+      },
     );
 
     const token = data.data.accessToken;

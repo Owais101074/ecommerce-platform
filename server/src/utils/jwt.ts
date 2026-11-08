@@ -9,8 +9,8 @@ export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-export function signAccessToken(userId: string, role: UserRole): string {
-  const payload: AccessTokenPayload = { sub: userId, role, type: 'access' };
+export function signAccessToken(userId: string, role: UserRole, tokenVersion: number): string {
+  const payload: AccessTokenPayload = { sub: userId, role, tokenVersion, type: 'access' };
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: env.JWT_ACCESS_TTL_SECONDS });
 }
 
@@ -30,12 +30,18 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
     typeof decoded === 'string' ||
     decoded.type !== 'access' ||
     typeof decoded.sub !== 'string' ||
+    typeof decoded.tokenVersion !== 'number' ||
     !ROLES.includes(decoded.role as UserRole)
   ) {
     throw new jwt.JsonWebTokenError('Invalid access token payload');
   }
 
-  return { sub: decoded.sub, role: decoded.role as UserRole, type: 'access' };
+  return {
+    sub: decoded.sub,
+    role: decoded.role as UserRole,
+    tokenVersion: decoded.tokenVersion,
+    type: 'access',
+  };
 }
 
 export function verifyRefreshToken(token: string): RefreshTokenPayload {

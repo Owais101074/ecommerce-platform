@@ -8,6 +8,7 @@ export interface IUser {
   passwordHash: string;
   role: UserRole;
   isActive: boolean;
+  tokenVersion: number;
   refreshTokenHash: string | null;
   refreshTokenExpiresAt: Date | null;
   createdAt: Date;
@@ -44,6 +45,11 @@ const userSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+      required: true,
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
       required: true,
     },
     refreshTokenHash: {

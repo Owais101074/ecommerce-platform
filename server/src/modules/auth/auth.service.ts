@@ -15,7 +15,7 @@ import type { LoginInput, RegisterInput } from './auth.validation';
 
 async function issueTokens(user: UserDocument): Promise<TokenPair> {
   const userId = user._id.toString();
-  const accessToken = signAccessToken(userId, user.role);
+  const accessToken = signAccessToken(userId, user.role, user.tokenVersion ?? 0);
   const refreshToken = signRefreshToken(userId);
 
   user.refreshTokenHash = hashToken(refreshToken);

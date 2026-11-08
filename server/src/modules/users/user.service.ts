@@ -50,7 +50,8 @@ export async function changePassword(userId: string, input: ChangePasswordInput)
   }
 
   user.passwordHash = await hashPassword(input.newPassword);
-  // Every refresh session is revoked; the current access token expires naturally.
+  // Revokes every refresh session and makes existing access tokens fail immediately.
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   user.refreshTokenHash = null;
   user.refreshTokenExpiresAt = null;
   await user.save();

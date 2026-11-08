@@ -20,6 +20,7 @@ export interface AuthResult extends TokenPair {
 export interface AccessTokenPayload {
   sub: string;
   role: UserRole;
+  tokenVersion: number;
   type: 'access';
 }
 

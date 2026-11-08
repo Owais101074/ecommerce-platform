@@ -26,6 +26,10 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
       throw new ApiError(401, 'Account is not available');
     }
 
+    if (payload.tokenVersion !== (user.tokenVersion ?? 0)) {
+      throw new ApiError(401, 'Session is no longer valid');
+    }
+
     req.user = toAuthUser(user);
     next();
   } catch (error) {

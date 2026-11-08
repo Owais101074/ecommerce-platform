@@ -18,6 +18,24 @@ const isDuplicateKeyError = (error: unknown): error is DuplicateKeyError => {
   );
 };
 
+interface HttpError {
+  status: number;
+  expose?: boolean;
+  message: string;
+}
+
+/** Body-parser and similar middleware attach a 4xx `status` to their errors. */
+const isHttpError = (error: unknown): error is HttpError => {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof (error as HttpError).status === 'number' &&
+    (error as HttpError).status >= 400 &&
+    (error as HttpError).status < 500
+  );
+};
+
 export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
   if (res.headersSent) {
     return next(error);
@@ -55,6 +73,9 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
   } else if (error instanceof SyntaxError && 'body' in error) {
     statusCode = 400;
     message = 'Invalid JSON payload';
+  } else if (isHttpError(error)) {
+    statusCode = error.status;
+    message = error.expose ? error.message : 'Request could not be processed';
   }
 
   if (statusCode >= 500) {

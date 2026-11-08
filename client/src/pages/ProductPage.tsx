@@ -14,6 +14,7 @@ import { QuantityStepper } from '@/components/cart/QuantityStepper';
 import { Container } from '@/components/layout/Container';
 import { AddToCartButton, WishlistButton } from '@/components/product/ProductActions';
 import { ProductCard } from '@/components/product/ProductCard';
+import { ProductReviews } from '@/components/product/ProductReviews';
 import { StockBadge } from '@/components/product/StockBadge';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { buttonStyles } from '@/components/ui/button-styles';
@@ -277,6 +278,10 @@ export function ProductPage() {
             </dl>
           </div>
         </div>
+      </Container>
+
+      <Container className="pb-6">
+        <ProductReviews product={product} />
       </Container>
 
       {product.category && (

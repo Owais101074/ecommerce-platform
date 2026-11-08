@@ -2,7 +2,12 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env'), quiet: true });
+// Load the first .env that exists: the package directory when run from npm,
+// then the compiled layout. Tests provide their own values below these.
+dotenv.config({ path: path.resolve(process.cwd(), '.env'), quiet: true });
+if (typeof __dirname === 'string') {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env'), quiet: true });
+}
 
 const envSchema = z
   .object({
@@ -15,6 +20,9 @@ const envSchema = z
     JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
     JWT_REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(604800),
     BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
+    RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+    RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
     PAYMENT_MODE: z.enum(['mock', 'razorpay']).default('mock'),
     RAZORPAY_KEY_ID: z.string().trim().default(''),
     RAZORPAY_KEY_SECRET: z
