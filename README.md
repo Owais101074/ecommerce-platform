@@ -5,12 +5,12 @@ clean architecture, TypeScript, and real-world backend practices.
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
+| Layer    | Technology                                                                               |
+| -------- | ---------------------------------------------------------------------------------------- |
 | Frontend | React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, Axios, lucide-react |
-| Backend | Node.js, Express, TypeScript, REST, JWT, Zod |
-| Database | MongoDB + Mongoose |
-| Tooling | Git, GitHub CLI, ESLint, Prettier, Postman |
+| Backend  | Node.js, Express, TypeScript, REST, JWT, Zod                                             |
+| Database | MongoDB + Mongoose                                                                       |
+| Tooling  | Git, GitHub CLI, ESLint, Prettier, Postman                                               |
 
 ## Repository layout
 
@@ -26,22 +26,22 @@ ecommerce-platform/
 
 ## Project status
 
-| Phase | Description | Status |
-|---|---|---|
-| 0 | Planning and architecture | Complete |
-| 1 | Backend foundation | Complete |
-| 2 | Authentication and authorization | Complete |
-| 3 | Products and categories | Complete |
-| 4 | Frontend foundation + storefront UI refresh | Complete |
-| 5 | Customer shopping experience | Complete |
-| 6 | Cart and wishlist | Complete |
-| 7 | Checkout, addresses and orders | Complete |
-| 8 | Payments | Complete |
-| 9 | Order management | Complete |
-| 10 | Admin dashboard | Not started |
-| 11 | Testing and security | Not started |
-| 12 | Advanced backend | Not started |
-| 13 | Deployment and CI/CD | Not started |
+| Phase | Description                                 | Status      |
+| ----- | ------------------------------------------- | ----------- |
+| 0     | Planning and architecture                   | Complete    |
+| 1     | Backend foundation                          | Complete    |
+| 2     | Authentication and authorization            | Complete    |
+| 3     | Products and categories                     | Complete    |
+| 4     | Frontend foundation + storefront UI refresh | Complete    |
+| 5     | Customer shopping experience                | Complete    |
+| 6     | Cart and wishlist                           | Complete    |
+| 7     | Checkout, addresses and orders              | Complete    |
+| 8     | Payments                                    | Complete    |
+| 9     | Order management                            | Complete    |
+| 10    | Admin dashboard                             | Complete    |
+| 11    | Testing and security                        | Not started |
+| 12    | Advanced backend                            | Not started |
+| 13    | Deployment and CI/CD                        | Not started |
 
 ## Documentation
 
@@ -90,27 +90,27 @@ curl http://localhost:5000/api/v1/health
 
 ### Server scripts
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Start with tsx watch (reloads on save) |
-| `npm run build` | Compile to `dist/` |
-| `npm start` | Run the compiled build |
-| `npm run typecheck` | TypeScript check, no output files |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier write |
-| `npm run seed:admin -- <email> <password> [name]` | Create an admin or promote an existing user |
-| `npm run seed:catalog` | Seed sample categories and products (idempotent) |
+| Command                                           | Purpose                                          |
+| ------------------------------------------------- | ------------------------------------------------ |
+| `npm run dev`                                     | Start with tsx watch (reloads on save)           |
+| `npm run build`                                   | Compile to `dist/`                               |
+| `npm start`                                       | Run the compiled build                           |
+| `npm run typecheck`                               | TypeScript check, no output files                |
+| `npm run lint`                                    | ESLint                                           |
+| `npm run format`                                  | Prettier write                                   |
+| `npm run seed:admin -- <email> <password> [name]` | Create an admin or promote an existing user      |
+| `npm run seed:catalog`                            | Seed sample categories and products (idempotent) |
 
 ### Authentication (Phase 2)
 
-| Method | Endpoint | Access |
-|---|---|---|
-| POST | `/api/v1/auth/register` | public |
-| POST | `/api/v1/auth/login` | public |
-| POST | `/api/v1/auth/refresh` | refresh cookie |
-| POST | `/api/v1/auth/logout` | refresh cookie |
-| GET | `/api/v1/auth/me` | access token |
-| GET | `/api/v1/admin/ping` | admin access token |
+| Method | Endpoint                | Access             |
+| ------ | ----------------------- | ------------------ |
+| POST   | `/api/v1/auth/register` | public             |
+| POST   | `/api/v1/auth/login`    | public             |
+| POST   | `/api/v1/auth/refresh`  | refresh cookie     |
+| POST   | `/api/v1/auth/logout`   | refresh cookie     |
+| GET    | `/api/v1/auth/me`       | access token       |
+| GET    | `/api/v1/admin/ping`    | admin access token |
 
 Access tokens live for 15 minutes and are sent as `Authorization: Bearer <token>`.
 The refresh token is stored in an httpOnly cookie and rotated on every refresh;
@@ -118,26 +118,26 @@ reusing an old refresh token revokes the session.
 
 ### Catalogue (Phase 3)
 
-| Method | Endpoint | Access |
-|---|---|---|
-| GET | `/api/v1/categories` | public |
-| GET | `/api/v1/categories/:slug` | public |
-| POST / PATCH / DELETE | `/api/v1/categories...` | admin |
-| GET | `/api/v1/products` | public |
-| GET | `/api/v1/products/:slug` | public |
-| POST / PATCH / DELETE | `/api/v1/products...` | admin |
-| PATCH | `/api/v1/products/:id/stock` | admin |
+| Method                | Endpoint                     | Access |
+| --------------------- | ---------------------------- | ------ |
+| GET                   | `/api/v1/categories`         | public |
+| GET                   | `/api/v1/categories/:slug`   | public |
+| POST / PATCH / DELETE | `/api/v1/categories...`      | admin  |
+| GET                   | `/api/v1/products`           | public |
+| GET                   | `/api/v1/products/:slug`     | public |
+| POST / PATCH / DELETE | `/api/v1/products...`        | admin  |
+| PATCH                 | `/api/v1/products/:id/stock` | admin  |
 
 `GET /api/v1/products` supports `q`, `category`, `minPrice`, `maxPrice`,
 `rating`, `inStock`, `sort`, `page`, and `limit`. Prices are integer paise.
 
 ### Profile (Phase 5)
 
-| Method | Endpoint | Access |
-|---|---|---|
-| GET | `/api/v1/users/me` | access token |
-| PATCH | `/api/v1/users/me` | access token |
-| PATCH | `/api/v1/users/me/password` | access token |
+| Method | Endpoint                    | Access       |
+| ------ | --------------------------- | ------------ |
+| GET    | `/api/v1/users/me`          | access token |
+| PATCH  | `/api/v1/users/me`          | access token |
+| PATCH  | `/api/v1/users/me/password` | access token |
 
 `PATCH /users/me` updates the name. `PATCH /users/me/password` verifies the
 current password, rejects reuse of the old password, hashes the new one, revokes
@@ -145,36 +145,37 @@ the stored refresh session and clears the refresh cookie.
 
 ### Addresses and checkout (Phase 7)
 
-| Method | Endpoint | Access |
-|---|---|---|
-| GET | `/api/v1/addresses` | access token |
-| POST | `/api/v1/addresses` | access token |
-| PATCH | `/api/v1/addresses/:id` | access token |
-| PATCH | `/api/v1/addresses/:id/default` | access token |
-| DELETE | `/api/v1/addresses/:id` | access token |
-| POST | `/api/v1/orders/quote` | access token |
-| POST | `/api/v1/orders` | access token |
-| GET | `/api/v1/orders` | access token |
-| GET | `/api/v1/orders/:id` | access token |
+| Method | Endpoint                        | Access       |
+| ------ | ------------------------------- | ------------ |
+| GET    | `/api/v1/addresses`             | access token |
+| POST   | `/api/v1/addresses`             | access token |
+| PATCH  | `/api/v1/addresses/:id`         | access token |
+| PATCH  | `/api/v1/addresses/:id/default` | access token |
+| DELETE | `/api/v1/addresses/:id`         | access token |
+| POST   | `/api/v1/orders/quote`          | access token |
+| POST   | `/api/v1/orders`                | access token |
+| GET    | `/api/v1/orders`                | access token |
+| GET    | `/api/v1/orders/:id`            | access token |
 
 The first saved address becomes the default; setting another default unsets the
 previous one, and deleting the default promotes the oldest remaining address.
 Checkout totals are computed on the server in integer paise: GST is 18% and
 inclusive (`round(subtotal × 18 / 118)`), shipping is free from ₹999 (99,900
 paise) and ₹49 (4,900 paise) below that. Orders store item and address snapshots,
-decrement stock atomically, and clear the cart. Coupon codes are rejected until
-Phase 10. Orders start with `paymentStatus: pending`; payment is completed from
-the order detail page.
+decrement stock atomically, and clear the cart. Coupon codes are validated
+against the cart subtotal on the server and the discount is applied before tax
+and shipping. Orders start with `paymentStatus: pending`; payment is completed
+from the order detail page.
 
 ### Payments (Phase 8)
 
-| Method | Endpoint | Access |
-|---|---|---|
-| POST | `/api/v1/payments/start` | access token |
-| POST | `/api/v1/payments/verify` | access token |
-| POST | `/api/v1/payments/abandon` | access token |
-| POST | `/api/v1/payments/mock/complete` | access token, mock mode only |
-| POST | `/api/v1/payments/webhook` | public, signature required |
+| Method | Endpoint                         | Access                       |
+| ------ | -------------------------------- | ---------------------------- |
+| POST   | `/api/v1/payments/start`         | access token                 |
+| POST   | `/api/v1/payments/verify`        | access token                 |
+| POST   | `/api/v1/payments/abandon`       | access token                 |
+| POST   | `/api/v1/payments/mock/complete` | access token, mock mode only |
+| POST   | `/api/v1/payments/webhook`       | public, signature required   |
 
 `POST /payments/start` creates one payment document per order and returns the
 gateway order id, the amount in paise and the public key id. Repeating it while
@@ -194,12 +195,12 @@ exact bytes Razorpay signed. Payment secrets live only in `server/.env`.
 
 ### Order management (Phase 9)
 
-| Method | Endpoint | Access |
-|---|---|---|
-| PATCH | `/api/v1/orders/:id/cancel` | order owner |
-| GET | `/api/v1/admin/orders` | admin |
-| GET | `/api/v1/admin/orders/:id` | admin |
-| PATCH | `/api/v1/admin/orders/:id/status` | admin |
+| Method | Endpoint                          | Access      |
+| ------ | --------------------------------- | ----------- |
+| PATCH  | `/api/v1/orders/:id/cancel`       | order owner |
+| GET    | `/api/v1/admin/orders`            | admin       |
+| GET    | `/api/v1/admin/orders/:id`        | admin       |
+| PATCH  | `/api/v1/admin/orders/:id/status` | admin       |
 
 Orders follow `placed → confirmed → shipped → delivered`, with `cancelled` as a
 terminal state. Every transition is validated on the server and appended to a
@@ -219,6 +220,44 @@ plus a customer name/email summary, then confirm, ship or deliver. Confirming
 requires a paid order, shipping requires a carrier and tracking number (stored
 as `tracking`), and stale or skipped transitions return `409`.
 
+### Admin dashboard and coupons (Phase 10)
+
+| Method         | Endpoint                              | Access       |
+| -------------- | ------------------------------------- | ------------ |
+| GET            | `/api/v1/admin/stats`                 | admin        |
+| GET            | `/api/v1/admin/customers`             | admin        |
+| GET            | `/api/v1/admin/customers/:id`         | admin        |
+| PATCH          | `/api/v1/admin/customers/:id/status`  | admin        |
+| POST           | `/api/v1/admin/uploads/product-image` | admin        |
+| POST           | `/api/v1/coupons/validate`            | access token |
+| GET / POST     | `/api/v1/coupons`                     | admin        |
+| PATCH / DELETE | `/api/v1/coupons/:id`                 | admin        |
+
+`GET /admin/stats` returns revenue (all time, last 30 days and today), order
+counts by status, customer and catalogue counters, a seven-day paid-revenue
+series, top products by units sold (cancelled orders excluded), low-stock and
+out-of-stock products, and the five latest orders. Aggregations run in MongoDB
+and customer summaries use one batched lookup per list.
+
+Coupons support percentage or fixed discounts in integer paise, a minimum order,
+an optional maximum discount, a start/expiry window, an optional usage limit and
+an active flag. `POST /coupons/validate` checks the signed-in customer's cart and
+returns the computed discount; checkout quotes and `POST /orders` recompute the
+same values on the server. Usage is claimed with an atomic conditional `$inc`
+when an order is placed and released when that order is cancelled, so a coupon
+cannot be over-redeemed by concurrent orders.
+
+Customer accounts can be deactivated by an admin. Deactivation clears the stored
+refresh session and `authenticate` rejects the access token immediately, so the
+customer is signed out on the next request.
+
+Product images are uploaded through the API: multer accepts only JPEG, PNG or
+WebP files up to 5 MB in memory, then the server signs and forwards the file to
+Cloudinary. Set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and
+`CLOUDINARY_API_SECRET` (plus optional `CLOUDINARY_FOLDER`) in `server/.env`.
+Without those values the endpoint returns `503` and the admin form falls back to
+image URLs, so local development never depends on a vendor account.
+
 ### Client (Phase 4)
 
 Start the API first, then the client in a second terminal:
@@ -233,34 +272,38 @@ The app starts at `http://localhost:5173` and calls `http://localhost:5000/api/v
 by default. Override it with `VITE_API_URL` in `client/.env` (see
 `client/.env.example`).
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Vite dev server with HMR |
-| `npm run build` | Type-check and build to `dist/` |
-| `npm run preview` | Serve the production build locally |
-| `npm run typecheck` | TypeScript check, no output files |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier write |
-| `npm run format:check` | Prettier check |
+| Command                | Purpose                            |
+| ---------------------- | ---------------------------------- |
+| `npm run dev`          | Vite dev server with HMR           |
+| `npm run build`        | Type-check and build to `dist/`    |
+| `npm run preview`      | Serve the production build locally |
+| `npm run typecheck`    | TypeScript check, no output files  |
+| `npm run lint`         | ESLint                             |
+| `npm run format`       | Prettier write                     |
+| `npm run format:check` | Prettier check                     |
 
 Client routes:
 
-| Route | Access | Purpose |
-|---|---|---|
-| `/` | public | Home with live category and product previews |
-| `/products` | public | Catalogue with search, filters, sorting and pagination |
-| `/products/:slug` | public | Product gallery, price, stock, ratings and related items |
-| `/categories/:slug` | public | Department hero with its products |
-| `/login` | public | Sign in |
-| `/register` | public | Create account |
-| `/account` | signed in | Editable profile, password change and session details |
-| `/addresses` | signed in | Address book with default address management |
-| `/checkout` | signed in | Address selection, server quote and order placement |
-| `/orders` | signed in | Order history with pagination |
-| `/orders/:id` | signed in | Order detail with snapshots, payment, timeline, tracking and cancellation |
-| `/admin` | admin | Role-guarded connectivity check |
-| `/admin/orders` | admin | All orders with status filters and pagination |
-| `/admin/orders/:id` | admin | Admin order detail with status actions |
+| Route               | Access    | Purpose                                                                   |
+| ------------------- | --------- | ------------------------------------------------------------------------- |
+| `/`                 | public    | Home with live category and product previews                              |
+| `/products`         | public    | Catalogue with search, filters, sorting and pagination                    |
+| `/products/:slug`   | public    | Product gallery, price, stock, ratings and related items                  |
+| `/categories/:slug` | public    | Department hero with its products                                         |
+| `/login`            | public    | Sign in                                                                   |
+| `/register`         | public    | Create account                                                            |
+| `/account`          | signed in | Editable profile, password change and session details                     |
+| `/addresses`        | signed in | Address book with default address management                              |
+| `/checkout`         | signed in | Address selection, server quote and order placement                       |
+| `/orders`           | signed in | Order history with pagination                                             |
+| `/orders/:id`       | signed in | Order detail with snapshots, payment, timeline, tracking and cancellation |
+| `/admin`            | admin     | Dashboard with revenue, pipeline and catalogue health                     |
+| `/admin/orders`     | admin     | All orders with status filters and pagination                             |
+| `/admin/orders/:id` | admin     | Admin order detail with status actions                                    |
+| `/admin/products`   | admin     | Product and stock management with image upload                            |
+| `/admin/categories` | admin     | Category tree management                                                  |
+| `/admin/customers`  | admin     | Customer list, spending history and deactivation                          |
+| `/admin/coupons`    | admin     | Coupon creation, editing and status control                               |
 
 The access token is kept in memory only; a reload restores the session through
 the httpOnly refresh cookie, and a 401 triggers one silent refresh and retry.

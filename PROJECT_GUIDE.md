@@ -4,24 +4,24 @@
 > how it is architected, what each phase delivers, how every important workflow
 > runs, and how to explain it to anyone.
 >
-> Last updated: 2026-11-09 · Branch: `main` · Latest phase: Phase 9
+> Last updated: 2026-11-09 · Branch: `main` · Latest phase: Phase 10
 > Repository: https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
 
 ## 0. How to use this file
 
-| If you want to... | Read |
-|---|---|
-| Explain the project in an interview | Section 3 (60-second version), Section 13 (Q&A) |
-| Understand the folder layout | Section 5 |
-| Understand why a technology was chosen | Section 6 |
-| Understand the database | Section 7 |
-| Know what is built vs planned | Section 9 |
-| Understand authentication deeply | Section 10 |
-| Run or test the project | Section 11 |
-| Know the development rules | Section 12 |
-| Be honest about gaps | Section 15 |
+| If you want to...                      | Read                                            |
+| -------------------------------------- | ----------------------------------------------- |
+| Explain the project in an interview    | Section 3 (60-second version), Section 13 (Q&A) |
+| Understand the folder layout           | Section 5                                       |
+| Understand why a technology was chosen | Section 6                                       |
+| Understand the database                | Section 7                                       |
+| Know what is built vs planned          | Section 9                                       |
+| Understand authentication deeply       | Section 10                                      |
+| Run or test the project                | Section 11                                      |
+| Know the development rules             | Section 12                                      |
+| Be honest about gaps                   | Section 15                                      |
 
 Status legend: **DONE** = implemented and verified · **PLANNED** = designed but not built yet.
 
@@ -29,38 +29,41 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 
 ## 1. Project at a glance
 
-| Item | Value |
-|---|---|
-| Type | Production-style e-commerce platform (learning project) |
-| Repository | `ecommerce-platform` (public, GitHub) |
-| Structure | Monorepo: `client/` + `server/`, independent `package.json` files, no npm workspaces |
-| Backend | Node.js 22, Express 5, TypeScript 6, REST, JWT, Zod 4 |
-| Database | MongoDB 8.2 + Mongoose 9 |
-| Frontend | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
-| Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 9 complete (order lifecycle, cancellation/refunds, admin order desk), awaiting review |
-| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 |
-| Next phase | Phase 10 — Admin Dashboard |
-| API base | `http://localhost:5000/api/v1` |
-| Client base | `http://localhost:5173` |
-| Database (dev) | `mongodb://127.0.0.1:27017/ecommerce_dev` |
+| Item             | Value                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| Type             | Production-style e-commerce platform (learning project)                                                         |
+| Repository       | `ecommerce-platform` (public, GitHub)                                                                           |
+| Structure        | Monorepo: `client/` + `server/`, independent `package.json` files, no npm workspaces                            |
+| Backend          | Node.js 22, Express 5, TypeScript 6, REST, JWT, Zod 4                                                           |
+| Database         | MongoDB 8.2 + Mongoose 9                                                                                        |
+| Frontend         | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios                       |
+| Tooling          | Git, GitHub CLI, ESLint 10, Prettier 3, Postman                                                                 |
+| Current phase    | Phase 10 complete (admin dashboard, coupons, customer and catalogue management, image uploads), awaiting review |
+| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10                                                                                |
+| Next phase       | Phase 11 — Testing and Security                                                                                 |
+| API base         | `http://localhost:5000/api/v1`                                                                                  |
+| Client base      | `http://localhost:5173`                                                                                         |
+| Database (dev)   | `mongodb://127.0.0.1:27017/ecommerce_dev`                                                                       |
 
 ---
 
 ## 2. What the product will do
 
 ### Customer features
+
 Registration, login, profile, product browsing, search, filters, sorting,
 categories, product details, reviews and ratings, cart, wishlist, addresses,
 checkout, payment, order history, order tracking, cancellation/refund, email
 notifications.
 
 ### Admin features
+
 Dashboard, product management, category management, inventory management,
 order management, customer management, coupon management, sales analytics,
 revenue reports.
 
 ### Engineering features
+
 Pagination, Redis caching, Cloudinary image uploads, Razorpay payments,
 background jobs, rate limiting, structured logging, security headers, Docker,
 deployment, automated tests, CI/CD.
@@ -202,16 +205,16 @@ Why: the frontend checks one shape everywhere; no ad-hoc parsing per endpoint.
 
 ### 4.5 Error handling pipeline
 
-| Error type | Status | Response message |
-|---|---|---|
-| `ApiError` | its own status | its own message |
-| Zod validation error | 400 | `Validation failed` + field list |
-| Mongoose `ValidationError` | 400 | `Validation failed` + field list |
-| Mongoose `CastError` (bad ObjectId) | 400 | `Invalid <path>` |
-| MongoDB duplicate key `11000` | 409 | `<field> already exists` |
-| Malformed JSON body | 400 | `Malformed JSON body` |
-| Unknown route | 404 | `Route not found: METHOD URL` |
-| Unexpected error | 500 | `Internal server error` |
+| Error type                          | Status         | Response message                 |
+| ----------------------------------- | -------------- | -------------------------------- |
+| `ApiError`                          | its own status | its own message                  |
+| Zod validation error                | 400            | `Validation failed` + field list |
+| Mongoose `ValidationError`          | 400            | `Validation failed` + field list |
+| Mongoose `CastError` (bad ObjectId) | 400            | `Invalid <path>`                 |
+| MongoDB duplicate key `11000`       | 409            | `<field> already exists`         |
+| Malformed JSON body                 | 400            | `Malformed JSON body`            |
+| Unknown route                       | 404            | `Route not found: METHOD URL`    |
+| Unexpected error                    | 500            | `Internal server error`          |
 
 Stack traces are only included for 5xx errors in development. 5xx errors are
 logged; 4xx errors are not, because they are normal client mistakes.
@@ -242,15 +245,15 @@ src/
 
 The storefront deliberately avoids a stock dashboard look:
 
-| Layer | Choice |
-|---|---|
-| Surfaces | Cream `#faf7f1` and paper `#fffdf9` |
-| Brand | Deep forest green (`brand-800` / `brand-900`) |
-| Accent | Terracotta (`accent-500` / `accent-600`) |
-| Display type | Fraunces (serif, headings) |
-| Body type | Plus Jakarta Sans (UI, prose) |
-| Icons | lucide-react |
-| Motion | `animate-rise`, `animate-float`, shimmer skeletons, reduced-motion override |
+| Layer        | Choice                                                                      |
+| ------------ | --------------------------------------------------------------------------- |
+| Surfaces     | Cream `#faf7f1` and paper `#fffdf9`                                         |
+| Brand        | Deep forest green (`brand-800` / `brand-900`)                               |
+| Accent       | Terracotta (`accent-500` / `accent-600`)                                    |
+| Display type | Fraunces (serif, headings)                                                  |
+| Body type    | Plus Jakarta Sans (UI, prose)                                               |
+| Icons        | lucide-react                                                                |
+| Motion       | `animate-rise`, `animate-float`, shimmer skeletons, reduced-motion override |
 
 All colours, fonts and shadows are declared with `@theme` in
 `client/src/index.css`; utilities such as `surface`, `dot-grid`, `skeleton`,
@@ -268,21 +271,21 @@ Layout split:
 
 ### 4.7 Security model
 
-| Threat | Mitigation | Status |
-|---|---|---|
-| Password database leak | bcrypt cost 12, never store plain text | DONE |
-| Token theft from JavaScript | refresh token in httpOnly cookie | DONE |
-| Stolen refresh token reuse | rotation + reuse detection clears session | DONE |
-| Refresh token DB leak | only SHA-256 hash stored | DONE |
-| Account enumeration | generic `Invalid email or password` | DONE |
-| Wrong role access | `authorize(...roles)` returns 403 | DONE |
-| Secret leakage | `.env` gitignored, Zod startup validation | DONE |
-| Oversized JSON payload | 10kb body limit | DONE |
-| XSS | React escaping + no token in localStorage (frontend plan) | PLANNED |
-| CSRF | `sameSite=lax` cookie + cookie scoped to `/api/v1/auth` | DONE (basic) |
-| Brute force | rate limiting | PLANNED Phase 11 |
-| Security headers | helmet-style headers | PLANNED Phase 11 |
-| Input injection | Zod schemas, Mongoose casting | DONE for current routes |
+| Threat                      | Mitigation                                                | Status                  |
+| --------------------------- | --------------------------------------------------------- | ----------------------- |
+| Password database leak      | bcrypt cost 12, never store plain text                    | DONE                    |
+| Token theft from JavaScript | refresh token in httpOnly cookie                          | DONE                    |
+| Stolen refresh token reuse  | rotation + reuse detection clears session                 | DONE                    |
+| Refresh token DB leak       | only SHA-256 hash stored                                  | DONE                    |
+| Account enumeration         | generic `Invalid email or password`                       | DONE                    |
+| Wrong role access           | `authorize(...roles)` returns 403                         | DONE                    |
+| Secret leakage              | `.env` gitignored, Zod startup validation                 | DONE                    |
+| Oversized JSON payload      | 10kb body limit                                           | DONE                    |
+| XSS                         | React escaping + no token in localStorage (frontend plan) | PLANNED                 |
+| CSRF                        | `sameSite=lax` cookie + cookie scoped to `/api/v1/auth`   | DONE (basic)            |
+| Brute force                 | rate limiting                                             | PLANNED Phase 11        |
+| Security headers            | helmet-style headers                                      | PLANNED Phase 11        |
+| Input injection             | Zod schemas, Mongoose casting                             | DONE for current routes |
 
 Known CSRF note: if the frontend is later deployed on a different domain, the
 cookie must become `sameSite: 'none'; secure: true`, which removes the built-in
@@ -450,45 +453,45 @@ client/
 
 `features/` currently holds only session state. Server-backed features live in
 `hooks/` and typed `api/` files, with page-level composition in `pages/`; admin
-tooling arrives in Phase 10.
+screens share `AdminLayout` and live under `pages/Admin*Page.tsx`.
 
 ---
 
 ## 6. Technology decisions
 
-| Decision | Choice | Why |
-|---|---|---|
-| Language | TypeScript strict, `noUncheckedIndexedAccess` | Shape errors caught at compile time |
-| Module resolution | `nodenext`, compiled to CommonJS | Modern resolver without ESM `.js` import friction |
-| HTTP framework | Express 5 | Native async error forwarding; no `asyncHandler` needed |
-| Validation | Zod 4 | One schema for env + requests; `z.infer` gives types |
-| Database | MongoDB + Mongoose | Flexible product documents, schema validation, references |
-| Auth tokens | 15 min access + 7 day refresh | Short exposure window, long convenience |
-| Refresh storage | SHA-256 hash on user document | DB leak does not expose usable tokens |
-| Passwords | bcryptjs cost 12 | Slow hashing resists brute force |
-| API prefix | `/api/v1` | Room for breaking changes |
-| Errors | `ApiError` + single handler | Consistent status and payload |
-| Money | Integer **paise** | No floating point rounding errors |
-| IDs | ObjectId internally, slug publicly | Stable URLs for products/categories |
-| Deletes | Soft delete (`isActive`) | Orders keep valid references |
-| Order data | Snapshots of price/name/address | History stays accurate after edits |
-| Reviews | Unique `(userId, productId)` index | One review per customer per product |
-| Images | URLs in Phase 3, Cloudinary in Phase 10 | Product CRUD is not blocked on a vendor |
-| Frontend state | TanStack Query + small AuthContext | Server state vs session state separation |
-| Client token storage | Access token in a module variable | Never in localStorage, so injected scripts cannot read it |
-| Client refresh | One shared refresh promise, then retry once | Parallel 401s trigger a single rotation |
-| Session restore | Refresh cookie on app mount, deduplicated | Survives reload without StrictMode double-rotation |
-| Styling | Tailwind 4 with `@theme` tokens | Design tokens generate utilities; no JS config |
-| Visual direction | Warm editorial palette, Fraunces + Plus Jakarta Sans, lucide icons | A curated shop feel that still scales to admin screens |
-| Routing | React Router 7 data router | Guards and future loaders in one place |
-| Cart/wishlist | Stored server-side | Cross-device consistency |
-| Checkout totals | Server quote plus recompute on order | The browser never sends money values |
-| Tax | GST-inclusive at 18%, `round(subtotal × 18 / 118)` | Indian retail pricing, exact integer paise |
-| Shipping | Free from ₹999 (99,900 paise), else ₹49 (4,900 paise) | One threshold measured after discount |
-| Address default | First address auto-default, exactly one default | Checkout has one unambiguous pre-selection |
-| Stock on order | Conditional `$gte` decrement with rollback | Prevents overselling without transactions |
-| Testing | Manual/Postman per phase, suite in Phase 11 | Learn behavior before automating |
-| Docker | Phase 12 | Core behaviour first, packaging later |
+| Decision             | Choice                                                             | Why                                                       |
+| -------------------- | ------------------------------------------------------------------ | --------------------------------------------------------- |
+| Language             | TypeScript strict, `noUncheckedIndexedAccess`                      | Shape errors caught at compile time                       |
+| Module resolution    | `nodenext`, compiled to CommonJS                                   | Modern resolver without ESM `.js` import friction         |
+| HTTP framework       | Express 5                                                          | Native async error forwarding; no `asyncHandler` needed   |
+| Validation           | Zod 4                                                              | One schema for env + requests; `z.infer` gives types      |
+| Database             | MongoDB + Mongoose                                                 | Flexible product documents, schema validation, references |
+| Auth tokens          | 15 min access + 7 day refresh                                      | Short exposure window, long convenience                   |
+| Refresh storage      | SHA-256 hash on user document                                      | DB leak does not expose usable tokens                     |
+| Passwords            | bcryptjs cost 12                                                   | Slow hashing resists brute force                          |
+| API prefix           | `/api/v1`                                                          | Room for breaking changes                                 |
+| Errors               | `ApiError` + single handler                                        | Consistent status and payload                             |
+| Money                | Integer **paise**                                                  | No floating point rounding errors                         |
+| IDs                  | ObjectId internally, slug publicly                                 | Stable URLs for products/categories                       |
+| Deletes              | Soft delete (`isActive`)                                           | Orders keep valid references                              |
+| Order data           | Snapshots of price/name/address                                    | History stays accurate after edits                        |
+| Reviews              | Unique `(userId, productId)` index                                 | One review per customer per product                       |
+| Images               | URL list plus optional signed Cloudinary upload                    | Catalogue writes work without a vendor account            |
+| Frontend state       | TanStack Query + small AuthContext                                 | Server state vs session state separation                  |
+| Client token storage | Access token in a module variable                                  | Never in localStorage, so injected scripts cannot read it |
+| Client refresh       | One shared refresh promise, then retry once                        | Parallel 401s trigger a single rotation                   |
+| Session restore      | Refresh cookie on app mount, deduplicated                          | Survives reload without StrictMode double-rotation        |
+| Styling              | Tailwind 4 with `@theme` tokens                                    | Design tokens generate utilities; no JS config            |
+| Visual direction     | Warm editorial palette, Fraunces + Plus Jakarta Sans, lucide icons | A curated shop feel that still scales to admin screens    |
+| Routing              | React Router 7 data router                                         | Guards and future loaders in one place                    |
+| Cart/wishlist        | Stored server-side                                                 | Cross-device consistency                                  |
+| Checkout totals      | Server quote plus recompute on order                               | The browser never sends money values                      |
+| Tax                  | GST-inclusive at 18%, `round(subtotal × 18 / 118)`                 | Indian retail pricing, exact integer paise                |
+| Shipping             | Free from ₹999 (99,900 paise), else ₹49 (4,900 paise)              | One threshold measured after discount                     |
+| Address default      | First address auto-default, exactly one default                    | Checkout has one unambiguous pre-selection                |
+| Stock on order       | Conditional `$gte` decrement with rollback                         | Prevents overselling without transactions                 |
+| Testing              | Manual/Postman per phase, suite in Phase 11                        | Learn behavior before automating                          |
+| Docker               | Phase 12                                                           | Core behaviour first, packaging later                     |
 
 ---
 
@@ -496,17 +499,17 @@ tooling arrives in Phase 10.
 
 ### 7.1 Implemented — `users`
 
-| Field | Type | Notes |
-|---|---|---|
-| `_id` | ObjectId | Primary key |
-| `name` | string | 2–50 chars |
-| `email` | string | unique, lowercase, trimmed |
-| `passwordHash` | string | `select: false`, bcrypt hash |
-| `role` | string | `customer` \| `admin`, default `customer` |
-| `isActive` | boolean | soft-delete / disable flag |
-| `refreshTokenHash` | string \| null | `select: false`, SHA-256 of current refresh token |
-| `refreshTokenExpiresAt` | Date \| null | `select: false`, session expiry |
-| `createdAt` / `updatedAt` | Date | Mongoose timestamps |
+| Field                     | Type           | Notes                                             |
+| ------------------------- | -------------- | ------------------------------------------------- |
+| `_id`                     | ObjectId       | Primary key                                       |
+| `name`                    | string         | 2–50 chars                                        |
+| `email`                   | string         | unique, lowercase, trimmed                        |
+| `passwordHash`            | string         | `select: false`, bcrypt hash                      |
+| `role`                    | string         | `customer` \| `admin`, default `customer`         |
+| `isActive`                | boolean        | soft-delete / disable flag                        |
+| `refreshTokenHash`        | string \| null | `select: false`, SHA-256 of current refresh token |
+| `refreshTokenExpiresAt`   | Date \| null   | `select: false`, session expiry                   |
+| `createdAt` / `updatedAt` | Date           | Mongoose timestamps                               |
 
 Index: unique index on `email`.
 
@@ -523,34 +526,34 @@ Design notes:
 
 `categories`:
 
-| Field | Type | Notes |
-|---|---|---|
-| `_id` | ObjectId | Primary key |
-| `name` | string | 2–60 chars |
-| `slug` | string | unique, generated from name |
-| `description` | string \| null | up to 500 chars |
-| `parentId` | ObjectId \| null | self-reference to parent category |
-| `isActive` | boolean | soft delete |
-| `createdAt` / `updatedAt` | Date | timestamps |
+| Field                     | Type             | Notes                             |
+| ------------------------- | ---------------- | --------------------------------- |
+| `_id`                     | ObjectId         | Primary key                       |
+| `name`                    | string           | 2–60 chars                        |
+| `slug`                    | string           | unique, generated from name       |
+| `description`             | string \| null   | up to 500 chars                   |
+| `parentId`                | ObjectId \| null | self-reference to parent category |
+| `isActive`                | boolean          | soft delete                       |
+| `createdAt` / `updatedAt` | Date             | timestamps                        |
 
 Indexes: `slug` unique, `(parentId, isActive)`.
 
 `products`:
 
-| Field | Type | Notes |
-|---|---|---|
-| `_id` | ObjectId | Primary key |
-| `name` | string | 2–120 chars |
-| `slug` | string | unique, generated from name |
-| `description` | string | 20–5000 chars |
-| `price` | number | integer paise, ≥ 0 |
-| `categoryId` | ObjectId | reference to `categories` |
-| `images` | string[] | URL strings, max 5 via API |
-| `stock` | number | integer, ≥ 0 |
-| `ratingAvg` | number | 0–5 aggregate, default 0 |
-| `ratingCount` | number | default 0 |
-| `isActive` | boolean | soft delete |
-| `createdAt` / `updatedAt` | Date | timestamps |
+| Field                     | Type     | Notes                       |
+| ------------------------- | -------- | --------------------------- |
+| `_id`                     | ObjectId | Primary key                 |
+| `name`                    | string   | 2–120 chars                 |
+| `slug`                    | string   | unique, generated from name |
+| `description`             | string   | 20–5000 chars               |
+| `price`                   | number   | integer paise, ≥ 0          |
+| `categoryId`              | ObjectId | reference to `categories`   |
+| `images`                  | string[] | URL strings, max 5 via API  |
+| `stock`                   | number   | integer, ≥ 0                |
+| `ratingAvg`               | number   | 0–5 aggregate, default 0    |
+| `ratingCount`             | number   | default 0                   |
+| `isActive`                | boolean  | soft delete                 |
+| `createdAt` / `updatedAt` | Date     | timestamps                  |
 
 Indexes: `slug` unique, `(categoryId, price)`, `createdAt` descending, text
 index on `name` and `description`.
@@ -568,20 +571,20 @@ Catalogue rules:
 
 `addresses`:
 
-| Field | Type | Notes |
-|---|---|---|
-| `_id` | ObjectId | Primary key |
-| `userId` | ObjectId | reference to `users`, indexed |
-| `label` | string | Home \| Work \| Other |
-| `fullName` | string | 2–80 chars |
-| `phone` | string | 10 digits starting 6–9 |
-| `line1` | string | 5–120 chars |
-| `line2` | string \| null | optional |
-| `city` | string | required |
-| `state` | string | required |
-| `pincode` | string | exactly 6 digits |
-| `isDefault` | boolean | exactly one per user |
-| `createdAt` / `updatedAt` | Date | timestamps |
+| Field                     | Type           | Notes                         |
+| ------------------------- | -------------- | ----------------------------- |
+| `_id`                     | ObjectId       | Primary key                   |
+| `userId`                  | ObjectId       | reference to `users`, indexed |
+| `label`                   | string         | Home \| Work \| Other         |
+| `fullName`                | string         | 2–80 chars                    |
+| `phone`                   | string         | 10 digits starting 6–9        |
+| `line1`                   | string         | 5–120 chars                   |
+| `line2`                   | string \| null | optional                      |
+| `city`                    | string         | required                      |
+| `state`                   | string         | required                      |
+| `pincode`                 | string         | exactly 6 digits              |
+| `isDefault`               | boolean        | exactly one per user          |
+| `createdAt` / `updatedAt` | Date           | timestamps                    |
 
 Index: `(userId, createdAt)`. Every query includes `userId`, so another user's
 address id resolves to `404`.
@@ -597,24 +600,24 @@ Default-address invariants enforced in the service:
 
 `orders`:
 
-| Field | Type | Notes |
-|---|---|---|
-| `_id` | ObjectId | Primary key |
-| `userId` | ObjectId | reference to `users` |
-| `orderNumber` | string | unique, `ORD-YYYYMMDD-XXXXXX` |
-| `items` | array | `{ productId, name, slug, image, price, quantity, lineTotal }` snapshot |
-| `address` | object | `{ fullName, phone, line1, line2, city, state, pincode }` snapshot |
-| `subtotal` | number | integer paise, from cart `priceAtAdd` |
-| `tax` | number | integer paise, GST already inside the price |
-| `shipping` | number | integer paise |
-| `discount` | number | integer paise, 0 until coupons exist |
-| `total` | number | integer paise, `subtotal - discount + shipping` |
-| `couponCode` | string \| null | reserved for Phase 10 |
-| `status` | enum | `placed` → `confirmed` → `shipped` → `delivered` / `cancelled` |
-| `paymentStatus` | enum | `pending` → `paid` / `failed` / `refunded` |
-| `statusHistory` | array | `{ status, at, note }` events, oldest first |
-| `tracking` | object \| null | `{ carrier, trackingNumber, updatedAt }`, set on shipping |
-| `createdAt` / `updatedAt` | Date | timestamps |
+| Field                     | Type           | Notes                                                                   |
+| ------------------------- | -------------- | ----------------------------------------------------------------------- |
+| `_id`                     | ObjectId       | Primary key                                                             |
+| `userId`                  | ObjectId       | reference to `users`                                                    |
+| `orderNumber`             | string         | unique, `ORD-YYYYMMDD-XXXXXX`                                           |
+| `items`                   | array          | `{ productId, name, slug, image, price, quantity, lineTotal }` snapshot |
+| `address`                 | object         | `{ fullName, phone, line1, line2, city, state, pincode }` snapshot      |
+| `subtotal`                | number         | integer paise, from cart `priceAtAdd`                                   |
+| `tax`                     | number         | integer paise, GST already inside the price                             |
+| `shipping`                | number         | integer paise                                                           |
+| `discount`                | number         | integer paise, from a claimed coupon or 0                               |
+| `total`                   | number         | integer paise, `subtotal - discount + shipping`                         |
+| `couponCode`              | string \| null | code snapshot when a coupon was applied                                 |
+| `status`                  | enum           | `placed` → `confirmed` → `shipped` → `delivered` / `cancelled`          |
+| `paymentStatus`           | enum           | `pending` → `paid` / `failed` / `refunded`                              |
+| `statusHistory`           | array          | `{ status, at, note }` events, oldest first                             |
+| `tracking`                | object \| null | `{ carrier, trackingNumber, updatedAt }`, set on shipping               |
+| `createdAt` / `updatedAt` | Date           | timestamps                                                              |
 
 Indexes: `(userId, createdAt)`, `(status, createdAt)` and a unique index on
 `orderNumber`. No stock or price is read from the client; the cart and catalogue
@@ -632,24 +635,24 @@ Lifecycle rules (Phase 9):
 
 `payments`:
 
-| Field | Type | Notes |
-|---|---|---|
-| `_id` | ObjectId | Primary key |
-| `orderId` | ObjectId | reference to `orders`, **unique** |
-| `userId` | ObjectId | reference to `users` |
-| `provider` | enum | `mock` \| `razorpay` |
-| `providerOrderId` | string | unique; Razorpay order id or `order_mock_*` |
-| `providerPaymentId` | string \| null | set when the signature verifies |
-| `amount` | number | integer paise, copied from the order total |
-| `currency` | string | `INR` |
-| `status` | enum | `created` → `paid` / `failed` \| `refund_pending` → `refunded` |
-| `failureReason` | string \| null | e.g. `simulated_failure`, `abandoned`, gateway text |
-| `attempts` | number | starts at 1; increments on retry |
-| `rawPayload` | Mixed | verification or webhook body for audit |
-| `paidAt` | Date \| null | when the payment completed |
-| `refundId` | string \| null | provider refund id (`rfnd_*` / `rfnd_mock_*`) |
-| `refundedAt` | Date \| null | when the refund completed |
-| `createdAt` / `updatedAt` | Date | timestamps |
+| Field                     | Type           | Notes                                                          |
+| ------------------------- | -------------- | -------------------------------------------------------------- |
+| `_id`                     | ObjectId       | Primary key                                                    |
+| `orderId`                 | ObjectId       | reference to `orders`, **unique**                              |
+| `userId`                  | ObjectId       | reference to `users`                                           |
+| `provider`                | enum           | `mock` \| `razorpay`                                           |
+| `providerOrderId`         | string         | unique; Razorpay order id or `order_mock_*`                    |
+| `providerPaymentId`       | string \| null | set when the signature verifies                                |
+| `amount`                  | number         | integer paise, copied from the order total                     |
+| `currency`                | string         | `INR`                                                          |
+| `status`                  | enum           | `created` → `paid` / `failed` \| `refund_pending` → `refunded` |
+| `failureReason`           | string \| null | e.g. `simulated_failure`, `abandoned`, gateway text            |
+| `attempts`                | number         | starts at 1; increments on retry                               |
+| `rawPayload`              | Mixed          | verification or webhook body for audit                         |
+| `paidAt`                  | Date \| null   | when the payment completed                                     |
+| `refundId`                | string \| null | provider refund id (`rfnd_*` / `rfnd_mock_*`)                  |
+| `refundedAt`              | Date \| null   | when the refund completed                                      |
+| `createdAt` / `updatedAt` | Date           | timestamps                                                     |
 
 Index: `(userId, createdAt)` plus unique indexes on `orderId` and
 `providerOrderId`. The unique `orderId` enforces one payment document per order;
@@ -660,10 +663,10 @@ valid signature or signed webhook.
 
 ### 7.4 Planned collections
 
-| Collection | Key fields | Relationships / indexes |
-|---|---|---|
-| `reviews` | userId, productId, rating, comment | unique (userId, productId) |
-| `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
+| Collection | Key fields                                                                                  | Relationships / indexes    |
+| ---------- | ------------------------------------------------------------------------------------------- | -------------------------- |
+| `reviews`  | userId, productId, rating, comment                                                          | unique (userId, productId) |
+| `coupons`  | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique                |
 
 ### 7.5 Relationship summary
 
@@ -697,16 +700,16 @@ Every document reference is by ObjectId. Product/category public URLs use slugs.
 
 ### 8.1 Conventions
 
-| Rule | Value |
-|---|---|
-| Base URL | `/api/v1` |
-| Format | JSON; payment webhook needs raw body |
-| Auth | `Authorization: Bearer <accessToken>` |
-| Roles | `customer` (default), `admin` |
+| Rule       | Value                                                          |
+| ---------- | -------------------------------------------------------------- |
+| Base URL   | `/api/v1`                                                      |
+| Format     | JSON; payment webhook needs raw body                           |
+| Auth       | `Authorization: Bearer <accessToken>`                          |
+| Roles      | `customer` (default), `admin`                                  |
 | Pagination | `?page=1&limit=20`, `meta: { page, limit, total, totalPages }` |
-| Sorting | `price_asc`, `price_desc`, `newest`, `rating` |
-| Money | integer paise |
-| Public IDs | products/categories by slug, others by ObjectId |
+| Sorting    | `price_asc`, `price_desc`, `newest`, `rating`                  |
+| Money      | integer paise                                                  |
+| Public IDs | products/categories by slug, others by ObjectId                |
 
 Status codes: 200 OK, 201 Created, 204 Deleted, 400 validation, 401 missing/
 invalid token, 403 wrong role, 404 not found, 409 duplicate, 422 business rule
@@ -714,57 +717,57 @@ invalid token, 403 wrong role, 404 not found, 409 duplicate, 422 business rule
 
 ### 8.2 Implemented endpoints
 
-| Method | Endpoint | Access | Behaviour |
-|---|---|---|---|
-| GET | `/health` | public | 200 healthy, 503 if DB down |
-| POST | `/auth/register` | public | 201, sets refresh cookie, returns user + access token |
-| POST | `/auth/login` | public | 200, sets refresh cookie, returns user + access token |
-| POST | `/auth/refresh` | refresh cookie | 200, rotates token, returns user + access token |
-| POST | `/auth/logout` | refresh cookie | 200, revokes session, clears cookie |
-| GET | `/auth/me` | access token | 200, returns current user |
-| GET | `/admin/ping` | admin access token | 200, RBAC smoke test |
-| GET | `/categories` | public | 200, nested active category tree |
-| GET | `/categories/:slug` | public | 200, category detail |
-| POST/PATCH/DELETE | `/categories...` | admin | create, update, soft delete (204) |
-| GET | `/products` | public | 200, filtered/sorted/paginated list + meta |
-| GET | `/products/:slug` | public | 200, product detail |
-| POST/PATCH/DELETE | `/products...` | admin | create, update, soft delete (204) |
-| PATCH | `/products/:id/stock` | admin | set absolute stock |
-| GET | `/users/me` | access token | 200, current profile |
-| PATCH | `/users/me` | access token | update name, returns the user |
-| PATCH | `/users/me/password` | access token | verify current password, revoke sessions, clear cookie |
-| GET | `/cart` | access token | cart with computed totals and price-change flag |
-| POST | `/cart/items` | access token | add `{ productId, quantity }` (quantity 1–10) |
-| PATCH | `/cart/items/:productId` | access token | set quantity, re-checks stock |
-| DELETE | `/cart/items/:productId` | access token | remove one line |
-| DELETE | `/cart` | access token | clear the cart |
-| GET | `/wishlist` | access token | active products in save order |
-| POST | `/wishlist/:productId` | access token | idempotent add |
-| DELETE | `/wishlist/:productId` | access token | idempotent remove |
-| GET | `/addresses` | access token | list own addresses, default first |
-| POST | `/addresses` | access token | create address; first one becomes default |
-| PATCH | `/addresses/:id` | access token | edit own address |
-| PATCH | `/addresses/:id/default` | access token | promote one address to default |
-| DELETE | `/addresses/:id` | access token | delete; promotes oldest remaining if default |
-| POST | `/orders/quote` | access token | server-computed checkout quote |
-| POST | `/orders` | access token | place order from cart + address |
-| GET | `/orders` | access token | own order history, paginated |
-| GET | `/orders/:id` | access token | own order detail |
-| POST | `/payments/start` | access token | create/reuse a payment attempt, return gateway order + key |
-| POST | `/payments/verify` | access token | verify HMAC, mark payment paid and order confirmed |
-| POST | `/payments/abandon` | access token | record a dismissed attempt as failed |
-| POST | `/payments/mock/complete` | access token | mock mode only; signed success or simulated failure |
-| POST | `/payments/webhook` | public + signature | raw-body gateway events (`payment.captured`, `payment.failed`) |
-| PATCH | `/orders/:id/cancel` | access token (owner) | cancel a `placed`/`confirmed` order, restore stock and refund if paid |
-| GET | `/admin/orders` | admin | all orders with `page`, `limit`, `status` and `userId` filters |
-| GET | `/admin/orders/:id` | admin | any order detail with customer summary |
-| PATCH | `/admin/orders/:id/status` | admin | confirm, ship with tracking, deliver or cancel |
+| Method            | Endpoint                   | Access               | Behaviour                                                             |
+| ----------------- | -------------------------- | -------------------- | --------------------------------------------------------------------- |
+| GET               | `/health`                  | public               | 200 healthy, 503 if DB down                                           |
+| POST              | `/auth/register`           | public               | 201, sets refresh cookie, returns user + access token                 |
+| POST              | `/auth/login`              | public               | 200, sets refresh cookie, returns user + access token                 |
+| POST              | `/auth/refresh`            | refresh cookie       | 200, rotates token, returns user + access token                       |
+| POST              | `/auth/logout`             | refresh cookie       | 200, revokes session, clears cookie                                   |
+| GET               | `/auth/me`                 | access token         | 200, returns current user                                             |
+| GET               | `/admin/ping`              | admin access token   | 200, RBAC smoke test                                                  |
+| GET               | `/categories`              | public               | 200, nested active category tree                                      |
+| GET               | `/categories/:slug`        | public               | 200, category detail                                                  |
+| POST/PATCH/DELETE | `/categories...`           | admin                | create, update, soft delete (204)                                     |
+| GET               | `/products`                | public               | 200, filtered/sorted/paginated list + meta                            |
+| GET               | `/products/:slug`          | public               | 200, product detail                                                   |
+| POST/PATCH/DELETE | `/products...`             | admin                | create, update, soft delete (204)                                     |
+| PATCH             | `/products/:id/stock`      | admin                | set absolute stock                                                    |
+| GET               | `/users/me`                | access token         | 200, current profile                                                  |
+| PATCH             | `/users/me`                | access token         | update name, returns the user                                         |
+| PATCH             | `/users/me/password`       | access token         | verify current password, revoke sessions, clear cookie                |
+| GET               | `/cart`                    | access token         | cart with computed totals and price-change flag                       |
+| POST              | `/cart/items`              | access token         | add `{ productId, quantity }` (quantity 1–10)                         |
+| PATCH             | `/cart/items/:productId`   | access token         | set quantity, re-checks stock                                         |
+| DELETE            | `/cart/items/:productId`   | access token         | remove one line                                                       |
+| DELETE            | `/cart`                    | access token         | clear the cart                                                        |
+| GET               | `/wishlist`                | access token         | active products in save order                                         |
+| POST              | `/wishlist/:productId`     | access token         | idempotent add                                                        |
+| DELETE            | `/wishlist/:productId`     | access token         | idempotent remove                                                     |
+| GET               | `/addresses`               | access token         | list own addresses, default first                                     |
+| POST              | `/addresses`               | access token         | create address; first one becomes default                             |
+| PATCH             | `/addresses/:id`           | access token         | edit own address                                                      |
+| PATCH             | `/addresses/:id/default`   | access token         | promote one address to default                                        |
+| DELETE            | `/addresses/:id`           | access token         | delete; promotes oldest remaining if default                          |
+| POST              | `/orders/quote`            | access token         | server-computed checkout quote                                        |
+| POST              | `/orders`                  | access token         | place order from cart + address                                       |
+| GET               | `/orders`                  | access token         | own order history, paginated                                          |
+| GET               | `/orders/:id`              | access token         | own order detail                                                      |
+| POST              | `/payments/start`          | access token         | create/reuse a payment attempt, return gateway order + key            |
+| POST              | `/payments/verify`         | access token         | verify HMAC, mark payment paid and order confirmed                    |
+| POST              | `/payments/abandon`        | access token         | record a dismissed attempt as failed                                  |
+| POST              | `/payments/mock/complete`  | access token         | mock mode only; signed success or simulated failure                   |
+| POST              | `/payments/webhook`        | public + signature   | raw-body gateway events (`payment.captured`, `payment.failed`)        |
+| PATCH             | `/orders/:id/cancel`       | access token (owner) | cancel a `placed`/`confirmed` order, restore stock and refund if paid |
+| GET               | `/admin/orders`            | admin                | all orders with `page`, `limit`, `status` and `userId` filters        |
+| GET               | `/admin/orders/:id`        | admin                | any order detail with customer summary                                |
+| PATCH             | `/admin/orders/:id/status` | admin                | confirm, ship with tracking, deliver or cancel                        |
 
 ### 8.3 Planned endpoints by phase
 
-| Phase | Endpoints |
-|---|---|
-| 10 | `/coupons/*`, `/admin/*` |
+| Phase | Endpoints                |
+| ----- | ------------------------ |
+| 10    | `/coupons/*`, `/admin/*` |
 
 Full contract: `docs/api-contract.md`. Any endpoint added outside it must be
 recorded there in the same commit.
@@ -778,6 +781,7 @@ recorded there in the same commit.
 **Goal:** decide what to build and how before writing code.
 
 **Delivered:**
+
 - Environment audit: Node 22.14.0, npm 10.9.2, Git 2.53.0, VS Code 1.139.1,
   MongoDB 8.2, GitHub CLI 2.103.3 authenticated as `Owais101074`.
 - Monorepo decision and folder plan.
@@ -798,6 +802,7 @@ collections exist, what `/api/v1` means, why money is stored in paise.
 **Goal:** a running API skeleton with safety nets.
 
 **Delivered:**
+
 - Express 5 + TypeScript 6 scaffold with strict compiler options.
 - ESLint 10 flat config and Prettier 3.
 - `config/env.ts`: Zod-validated environment; invalid config exits at startup.
@@ -823,6 +828,7 @@ handler, why Express 5 removes `asyncHandler`, what graceful shutdown does.
 **Goal:** secure accounts and role-based access.
 
 **Delivered:**
+
 - `users` collection with unique lowercase email, bcrypt hash, role, active flag,
   hashed refresh token and expiry.
 - Zod register/login schemas and reusable `validate` middleware.
@@ -847,6 +853,7 @@ difference between 401 and 403.
 **Goal:** the catalogue.
 
 **Delivered:**
+
 - `categories` module: name, slug, optional parent, description, active flag;
   public nested tree; admin CRUD; cycle prevention; delete guards.
 - `products` module: name, slug, description, price (paise), category, image
@@ -876,6 +883,7 @@ Express 5 read-only `req.query` (hence `validatedQuery`).
 **Goal:** a typed frontend shell that talks to the API.
 
 **Delivered:**
+
 - Vite 8 + React 19 + TypeScript 6 client; Tailwind 4 through
   `@tailwindcss/vite`; `@theme` tokens for brand, ink and accent colours.
 - Path alias `@/`, strict compiler options, ESLint 10 flat config, Prettier.
@@ -907,6 +915,7 @@ Commit `0e6367f`.
 **Goal:** make the foundation feel like a curated store before Phase 5.
 
 **Delivered:**
+
 - Warm editorial tokens in `index.css`: cream/paper surfaces, forest-green
   brand, terracotta accent, Fraunces + Plus Jakarta Sans, soft/lift shadows,
   shimmer skeletons and reduced-motion overrides.
@@ -947,6 +956,7 @@ Tailwind 4 theme configuration, TypeScript generics over API envelopes.
 **Goal:** browse and discover products, and manage the account profile.
 
 **Delivered:**
+
 - `users` module with `GET /users/me`, `PATCH /users/me` and
   `PATCH /users/me/password`, all behind `authenticate`.
 - Profile name validation (2–50 characters) with the refreshed user DTO
@@ -999,6 +1009,7 @@ and validating business rules (password reuse) in the service layer.
 **Goal:** let customers save products and hold a trustworthy cart.
 
 **Delivered:**
+
 - `carts` collection: one cart per user (`userId` unique), embedded items
   `{ productId, quantity, priceAtAdd }` with the price stored in integer paise.
 - Cart endpoints under `authenticate`: `GET /cart`, `POST /cart/items`,
@@ -1058,6 +1069,7 @@ counts from cached queries, and guarding UI routes with auth state.
 **Goal:** turn a cart into an order before payment.
 
 **Delivered:**
+
 - `addresses` collection scoped by `userId`: label, full name, phone, line 1,
   optional line 2, city, state, 6-digit pincode and `isDefault`.
 - Address endpoints `GET/POST /addresses`, `PATCH /addresses/:id`,
@@ -1081,8 +1093,9 @@ counts from cached queries, and guarding UI routes with auth state.
   fails, creates the order and clears the cart.
 - `GET /orders` paginated history and `GET /orders/:id`, both scoped to the
   signed-in user; another user's order id returns `404`.
-- Coupon hook: a supplied code returns `400 Coupon codes are not available yet`
-  until Phase 10 instead of being silently ignored.
+- Coupon hook: a supplied code is validated and claimed by the coupon service
+  (Phase 10); invalid codes return a specific `400`, and a use is released if
+  order creation rolls back.
 - Client data layer: `address.api.ts`, `order.api.ts`, address/order types,
   `useAddresses` (cache-writing mutations), `useOrders`, `useOrder`,
   `useCheckoutQuote` and `usePlaceOrder` (clears the cart cache on success).
@@ -1134,6 +1147,7 @@ cache invalidation after a mutation that changes several resources.
 **Goal:** take money safely.
 
 **Delivered:**
+
 - Env validation for `PAYMENT_MODE` (`mock` | `razorpay`), `RAZORPAY_KEY_ID`,
   `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`; production refuses to
   start in mock mode or without a key id.
@@ -1206,6 +1220,7 @@ paths, and mutation-driven cache invalidation across related resources.
 **Goal:** manage the order lifecycle.
 
 **Delivered:**
+
 - One server-owned transition map:
   `placed → confirmed → shipped → delivered`, with `cancelled` reachable from
   `placed` and `confirmed` only. Any other move is rejected.
@@ -1277,16 +1292,100 @@ while sharing one service layer.
 
 ---
 
-### Phase 10 — Admin Dashboard — **PLANNED**
+### Phase 10 — Admin Dashboard — **DONE**
 
 **Goal:** operational control.
 
-**Will deliver:**
-- Admin login flow and dashboard layout.
-- Sales analytics and revenue reports.
-- Product, inventory, order, customer and coupon management.
-- Cloudinary image uploads for products.
-- Low-stock and top-product reports.
+**Delivered:**
+
+- `coupons` collection with an uppercase unique code, `percentage` or `fixed`
+  type, value in integer paise, minimum order, optional maximum discount, start
+  and expiry dates, optional usage limit, `usedCount` and an active flag. Codes
+  are trimmed and uppercased, and a partial index covers the active/expiry
+  lookup used at checkout.
+- `POST /coupons/validate` reads the signed-in customer's cart, checks the
+  active flag, date window, usage limit and minimum order, then returns the
+  computed discount. Unknown, expired, future, exhausted, inactive and
+  below-minimum codes all return `400` with a specific message.
+- Admin coupon endpoints under `/coupons` (list with search and active filters,
+  create, update, soft deactivate). Duplicate codes return `409`; updates merge
+  the existing document before re-running the type/value/expiry refinements so a
+  partial update cannot create an invalid coupon.
+- Checkout quote and `POST /orders` accept `couponCode`. The order service
+  resolves the coupon after pricing the cart, claims one use with a conditional
+  `$inc` guarded by `isActive`, the date window and `usedCount < maxUses`, and
+  releases the use if order creation fails (for example an insufficient-stock
+  rollback). Cancelling an order releases its coupon. This gives at-most-once
+  consumption per order and prevents concurrent over-redemption without
+  transactions.
+- `GET /admin/stats` aggregates paid revenue for all time, the last 30 days and
+  today; order counts by status; customer totals (active and new in 30 days);
+  product totals, low stock (`≤ 5`) and out of stock; coupon totals and active
+  count; a seven-day paid-revenue series; top products by units sold with
+  cancelled orders excluded; the five latest orders; and the low-stock list.
+  Everything is computed in MongoDB with a small number of aggregations, and
+  recent-order customers are resolved with one batched lookup.
+- `GET /admin/customers` lists only customer-role accounts with order count,
+  paid lifetime spend and last order date from one aggregation, plus search and
+  active/inactive filters. `GET /admin/customers/:id` adds the last five orders
+  through the existing admin order mapper. `PATCH /admin/customers/:id/status`
+  toggles `isActive`; deactivation also clears the stored refresh session, and
+  `authenticate` already rejects inactive users, so access ends immediately.
+- `POST /admin/uploads/product-image` uses multer memory storage, accepts only
+  JPEG/PNG/WebP up to 5 MB, and forwards the file to Cloudinary with a
+  server-generated SHA-1 signature over `folder` and `timestamp`. The API secret
+  never leaves the server. Missing credentials return `503`; catalogue writes
+  still accept image URLs, so local development does not need a vendor account.
+- Client: `AdminLayout` with section navigation; `AdminDashboardPage` (stat
+  cards, seven-day bar chart, order pipeline, top products, low stock, active
+  coupons, recent orders); `AdminProductsPage` (search, pagination, create/edit,
+  rupee-to-paise conversion, image upload or URL list capped at five, stock
+  badges, soft delete); `AdminCategoriesPage` (recursive tree with indentation,
+  parent selection that excludes self and descendants); `AdminCustomersPage`
+  (search, status filter, detail panel with spending, recent orders and
+  deactivation); `AdminCouponsPage` (search, status filter, create/edit, usage
+  and window display, activate/deactivate).
+- Checkout gains a coupon card: apply validates the code, the quote re-runs with
+  the code, discount and recomputed GST/total appear, and Remove restores the
+  original quote. A rejected applied code offers to remove it instead of
+  trapping the customer.
+- Query hooks invalidate the right keys after each mutation: coupon mutations
+  refresh admin lists and dashboard stats; customer status refreshes the detail,
+  lists and stats; catalogue mutations refresh products, the affected detail,
+  categories and stats.
+
+**Verification:** 44 live API checks passed, covering admin/customer role
+boundaries, dashboard shape (seven daily buckets), percentage and duplicate
+coupons, case-insensitive validation, quote and order discounts, usage claimed
+then released on cancellation, single-use exhaustion, expired/future/min-order/
+inactive rejections, active filtering, customer list/detail stats, immediate
+session rejection after deactivation and reactivation, category/product create,
+update, stock and soft delete, hidden soft-deleted products, upload validation
+(`400` for a missing file and wrong type, `503` for a valid image without
+Cloudinary), and dashboard counters reflecting new data. Browser checks:
+dashboard renders live revenue, pipeline, chart, top products and recent orders;
+the coupon form creates a coupon and the row toggle deactivates/activates it;
+the customers panel opens with spending and recent orders; checkout applies a
+coupon (₹499 + ₹49 shipping − ₹25 discount = ₹523) and removes it back to ₹548.
+The in-app browser still reports a hidden viewport, so interactions were driven
+through the DOM and verified with snapshots, network logs and console output; no
+React errors appeared. `typecheck`, `lint`, `format:check` and `build` pass for
+both apps.
+
+**Be able to explain:** why discount math is integer-only and capped at the
+subtotal, why coupon usage uses a conditional `$inc` and when the use is
+released, how the quote and the order stay consistent, why analytics aggregations
+exclude unpaid/cancelled orders from revenue and top products, why customer
+deactivation takes effect immediately, why the Cloudinary signature is generated
+on the server, why the upload endpoint returns `503` instead of failing to boot,
+and why admin catalogue screens reuse the public read endpoints.
+
+**Key concepts learned:** atomic counters and conditional updates for limited
+resources, server-side pricing consistency across quote and order, MongoDB
+aggregation pipelines (`$facet`-style grouping, `$unwind`, `$cond`), UTC day
+buckets, avoiding N+1 with batched lookups, signed third-party uploads with
+memory-buffered multipart, role-guarded nested routes, and TanStack Query cache
+invalidation across related resources.
 
 ---
 
@@ -1295,6 +1394,7 @@ while sharing one service layer.
 **Goal:** prove correctness and harden the system.
 
 **Will deliver:**
+
 - Unit tests for services and utilities.
 - Integration/API tests for critical flows.
 - Frontend component tests.
@@ -1310,6 +1410,7 @@ while sharing one service layer.
 **Goal:** production behaviour under load.
 
 **Will deliver:**
+
 - Redis caching for product listings and categories with invalidation.
 - Background jobs (emails, cleanup, payment reconciliation).
 - Email notifications for orders and account events.
@@ -1324,6 +1425,7 @@ while sharing one service layer.
 **Goal:** ship it.
 
 **Will deliver:**
+
 - Frontend and backend deployment.
 - Production MongoDB (Atlas or managed).
 - Production environment variables and secrets management.
@@ -1338,10 +1440,10 @@ while sharing one service layer.
 
 ### 10.1 Why two tokens
 
-| Token | Lifetime | Storage | Purpose |
-|---|---|---|---|
-| Access | 15 minutes | Returned in JSON, kept in memory | Proves identity on API calls |
-| Refresh | 7 days | httpOnly cookie, path `/api/v1/auth` | Obtains new access tokens |
+| Token   | Lifetime   | Storage                              | Purpose                      |
+| ------- | ---------- | ------------------------------------ | ---------------------------- |
+| Access  | 15 minutes | Returned in JSON, kept in memory     | Proves identity on API calls |
+| Refresh | 7 days     | httpOnly cookie, path `/api/v1/auth` | Obtains new access tokens    |
 
 A single long-lived token is dangerous: if stolen, the attacker has long access.
 A single short token is annoying: the user logs in constantly. The pair solves
@@ -1463,19 +1565,19 @@ Logout is idempotent and cannot be triggered with a forged token.
 
 ### 10.9 Failure behaviour
 
-| Situation | Status | Message |
-|---|---|---|
-| Missing Bearer header | 401 | Authentication required |
-| Expired/garbage access token | 401 | Invalid or expired access token |
-| Refresh token used as access token | 401 | Invalid or expired access token |
-| Deleted/disabled user | 401 | Account is not available |
-| Authenticated customer on admin route | 403 | You do not have permission... |
-| Wrong password | 401 | Invalid email or password |
-| Disabled account, correct password | 403 | Account is disabled |
-| Duplicate email | 409 | Email is already registered |
-| Invalid register body | 400 | Validation failed + field errors |
-| No refresh cookie | 401 | Refresh token is required |
-| Reused/logged-out refresh token | 401 | Session expired |
+| Situation                             | Status | Message                          |
+| ------------------------------------- | ------ | -------------------------------- |
+| Missing Bearer header                 | 401    | Authentication required          |
+| Expired/garbage access token          | 401    | Invalid or expired access token  |
+| Refresh token used as access token    | 401    | Invalid or expired access token  |
+| Deleted/disabled user                 | 401    | Account is not available         |
+| Authenticated customer on admin route | 403    | You do not have permission...    |
+| Wrong password                        | 401    | Invalid email or password        |
+| Disabled account, correct password    | 403    | Account is disabled              |
+| Duplicate email                       | 409    | Email is already registered      |
+| Invalid register body                 | 400    | Validation failed + field errors |
+| No refresh cookie                     | 401    | Refresh token is required        |
+| Reused/logged-out refresh token       | 401    | Session expired                  |
 
 ### 10.10 Known limitation
 
@@ -1525,43 +1627,47 @@ Run it twice and put the values in `.env` as `JWT_ACCESS_SECRET` and
 
 ### Environment variables
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `NODE_ENV` | development / test / production | development |
-| `PORT` | HTTP port | 5000 |
-| `MONGODB_URI` | MongoDB connection string | required |
-| `CORS_ORIGIN` | allowed browser origins, comma-separated | http://localhost:5173 |
-| `JWT_ACCESS_SECRET` | access token signing secret | required, 32+ chars |
-| `JWT_REFRESH_SECRET` | refresh token signing secret | required, 32+ chars, different |
-| `JWT_ACCESS_TTL_SECONDS` | access token lifetime | 900 |
-| `JWT_REFRESH_TTL_SECONDS` | refresh token lifetime | 604800 |
-| `BCRYPT_ROUNDS` | bcrypt cost | 12 |
+| Variable                  | Purpose                                      | Default                        |
+| ------------------------- | -------------------------------------------- | ------------------------------ |
+| `NODE_ENV`                | development / test / production              | development                    |
+| `PORT`                    | HTTP port                                    | 5000                           |
+| `MONGODB_URI`             | MongoDB connection string                    | required                       |
+| `CORS_ORIGIN`             | allowed browser origins, comma-separated     | http://localhost:5173          |
+| `JWT_ACCESS_SECRET`       | access token signing secret                  | required, 32+ chars            |
+| `JWT_REFRESH_SECRET`      | refresh token signing secret                 | required, 32+ chars, different |
+| `JWT_ACCESS_TTL_SECONDS`  | access token lifetime                        | 900                            |
+| `JWT_REFRESH_TTL_SECONDS` | refresh token lifetime                       | 604800                         |
+| `BCRYPT_ROUNDS`           | bcrypt cost                                  | 12                             |
+| `CLOUDINARY_CLOUD_NAME`   | Cloudinary cloud name (uploads)              | empty; uploads return `503`    |
+| `CLOUDINARY_API_KEY`      | Cloudinary API key                           | empty                          |
+| `CLOUDINARY_API_SECRET`   | Cloudinary API secret, used only for signing | empty                          |
+| `CLOUDINARY_FOLDER`       | upload folder                                | ecommerce-platform             |
 
 ### Commands
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | tsx watch |
-| `npm run build` | compile to `dist/` |
-| `npm start` | run compiled build |
-| `npm run typecheck` | TypeScript, no emit |
-| `npm run lint` | ESLint |
-| `npm run lint:fix` | ESLint with fixes |
-| `npm run format` | Prettier write |
-| `npm run format:check` | Prettier check |
-| `npm run seed:admin -- <email> <password> [name]` | create/promote admin |
-| `npm run seed:catalog` | seed sample categories and products (idempotent) |
+| Command                                           | Purpose                                          |
+| ------------------------------------------------- | ------------------------------------------------ |
+| `npm run dev`                                     | tsx watch                                        |
+| `npm run build`                                   | compile to `dist/`                               |
+| `npm start`                                       | run compiled build                               |
+| `npm run typecheck`                               | TypeScript, no emit                              |
+| `npm run lint`                                    | ESLint                                           |
+| `npm run lint:fix`                                | ESLint with fixes                                |
+| `npm run format`                                  | Prettier write                                   |
+| `npm run format:check`                            | Prettier check                                   |
+| `npm run seed:admin -- <email> <password> [name]` | create/promote admin                             |
+| `npm run seed:catalog`                            | seed sample categories and products (idempotent) |
 
 Client commands (`cd client`):
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Vite dev server with HMR |
-| `npm run build` | type-check then build to `dist/` |
-| `npm run preview` | serve the production build |
-| `npm run typecheck` | TypeScript, no emit |
-| `npm run lint` | ESLint |
-| `npm run format` / `format:check` | Prettier write / check |
+| Command                           | Purpose                          |
+| --------------------------------- | -------------------------------- |
+| `npm run dev`                     | Vite dev server with HMR         |
+| `npm run build`                   | type-check then build to `dist/` |
+| `npm run preview`                 | serve the production build       |
+| `npm run typecheck`               | TypeScript, no emit              |
+| `npm run lint`                    | ESLint                           |
+| `npm run format` / `format:check` | Prettier write / check           |
 
 ### Quick manual checks
 
@@ -1595,96 +1701,96 @@ repeated in Postman; no Postman collection is committed.
 
 ### Verified Phase 2 results (18 checks)
 
-| # | Check | Result |
-|---|---|---|
-| 1 | Register | 201 |
-| 2 | Duplicate register | 409 |
-| 3 | Validation errors | 400 with field list |
-| 4 | Wrong password | 401 |
-| 5 | `/auth/me` with token | 200 |
-| 6 | `/auth/me` without token | 401 |
-| 7 | Customer → `/admin/ping` | 403 |
-| 8 | Refresh rotation | 200, cookie changed |
-| 9 | Old refresh token reuse | 401 |
-| 10 | New token after reuse detection | 401 |
-| 11 | Fresh login | 200 |
-| 12 | Logout | 200 |
-| 13 | Refresh after logout | 401 |
-| 14 | Server-side revocation | 401 |
-| 15 | Admin login | 200 |
-| 16 | Admin → `/admin/ping` | 200 |
-| 17 | Garbage access token | 401 |
-| 18 | Refresh token as access token | 401 |
+| #   | Check                           | Result              |
+| --- | ------------------------------- | ------------------- |
+| 1   | Register                        | 201                 |
+| 2   | Duplicate register              | 409                 |
+| 3   | Validation errors               | 400 with field list |
+| 4   | Wrong password                  | 401                 |
+| 5   | `/auth/me` with token           | 200                 |
+| 6   | `/auth/me` without token        | 401                 |
+| 7   | Customer → `/admin/ping`        | 403                 |
+| 8   | Refresh rotation                | 200, cookie changed |
+| 9   | Old refresh token reuse         | 401                 |
+| 10  | New token after reuse detection | 401                 |
+| 11  | Fresh login                     | 200                 |
+| 12  | Logout                          | 200                 |
+| 13  | Refresh after logout            | 401                 |
+| 14  | Server-side revocation          | 401                 |
+| 15  | Admin login                     | 200                 |
+| 16  | Admin → `/admin/ping`           | 200                 |
+| 17  | Garbage access token            | 401                 |
+| 18  | Refresh token as access token   | 401                 |
 
 `typecheck`, `lint`, `format:check` and `build` all pass.
 
 ### Verified Phase 3 results (34 checks)
 
-| Area | Checks |
-|---|---|
-| RBAC | anonymous write 401, customer write 403 |
-| Categories | create 201, duplicate slug `-2`, child creation, nested tree, cycle 400, detail by slug |
-| Products | create 201, duplicate slug, validation 400, detail, update, stock update |
-| Listing | pagination meta, text search, category filter, price range, ascending sort, in-stock filter |
-| Validation | `minPrice > maxPrice` 400, unknown sort 400 |
-| Deletion | category blocked 409 with products, empty child 204, product soft delete 404, category delete after cleanup 204 |
-| Seed | first run 3 categories + 6 products, second run created 0 |
+| Area       | Checks                                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------------------- |
+| RBAC       | anonymous write 401, customer write 403                                                                         |
+| Categories | create 201, duplicate slug `-2`, child creation, nested tree, cycle 400, detail by slug                         |
+| Products   | create 201, duplicate slug, validation 400, detail, update, stock update                                        |
+| Listing    | pagination meta, text search, category filter, price range, ascending sort, in-stock filter                     |
+| Validation | `minPrice > maxPrice` 400, unknown sort 400                                                                     |
+| Deletion   | category blocked 409 with products, empty child 204, product soft delete 404, category delete after cleanup 204 |
+| Seed       | first run 3 categories + 6 products, second run created 0                                                       |
 
 The development database currently contains the seeded catalogue: Electronics,
 Fashion and Home, with six products.
 
 ### Verified Phase 4 results (browser)
 
-| # | Check | Result |
-|---|---|---|
-| 1 | Home renders live counters, categories and products | 6 products, 3 departments |
-| 2 | Register with valid data | session created, lands on `/account` |
-| 3 | Reload `/account` | session restored from the refresh cookie |
-| 4 | Sign out | session cleared, redirect to `/login` |
-| 5 | Guest visits `/account` | redirected to `/login` with `from` state |
-| 6 | Login after redirect | returns to `/account` |
-| 7 | Wrong password | "Invalid email or password" alert |
-| 8 | Customer visits `/admin` | "Admins only" panel, API never called |
-| 9 | Admin visits `/admin` | `Admin access granted` from `/admin/ping` |
-| 10 | Unknown URL | 404 page with title and home link |
-| 11 | Expired access token (3s TTL test) | `/admin/ping` 401 → refresh 200 → retry 200 |
-| 12 | Console | no React warnings or errors |
+| #   | Check                                               | Result                                      |
+| --- | --------------------------------------------------- | ------------------------------------------- |
+| 1   | Home renders live counters, categories and products | 6 products, 3 departments                   |
+| 2   | Register with valid data                            | session created, lands on `/account`        |
+| 3   | Reload `/account`                                   | session restored from the refresh cookie    |
+| 4   | Sign out                                            | session cleared, redirect to `/login`       |
+| 5   | Guest visits `/account`                             | redirected to `/login` with `from` state    |
+| 6   | Login after redirect                                | returns to `/account`                       |
+| 7   | Wrong password                                      | "Invalid email or password" alert           |
+| 8   | Customer visits `/admin`                            | "Admins only" panel, API never called       |
+| 9   | Admin visits `/admin`                               | `Admin access granted` from `/admin/ping`   |
+| 10  | Unknown URL                                         | 404 page with title and home link           |
+| 11  | Expired access token (3s TTL test)                  | `/admin/ping` 401 → refresh 200 → retry 200 |
+| 12  | Console                                             | no React warnings or errors                 |
 
 Test accounts were removed afterwards; the client build and both test suites
 (typecheck, lint, format, build) pass.
 
 ### Verified UI refresh results (browser)
 
-| # | Check | Result |
-|---|---|---|
-| 1 | Home data and media | 3 category cards, 4 new-arrival cards, all product images loaded at 900px width |
-| 2 | Fonts and surfaces | Fraunces + Plus Jakarta Sans loaded; body background `rgb(250, 247, 241)` |
-| 3 | Empty register submit | name, email and password errors shown; form not sent |
-| 4 | Password toggle | `password` → `text` → `password`, label and `aria-pressed` update |
-| 5 | Register valid data | 201, session created, lands on `/account` as customer |
-| 6 | Sign out | cookie cleared, redirect to `/login` |
-| 7 | Empty login submit | email and password required errors, both fields `aria-invalid` |
-| 8 | Wrong password | "Invalid email or password" alert |
-| 9 | Valid login | returns to `/account` |
-| 10 | Admin promotion + reload | role shows ADMIN; `/admin` shows "Admin access granted" from `/admin/ping` |
-| 11 | Footer while signed in | account link, plus admin console link for admins; no guest links |
-| 12 | Unknown URL | 404 page with store and new-arrivals links |
-| 13 | Console | no React warnings or errors; only the expected guest `/auth/refresh` 401 |
-| 14 | Screenshots / scroll offsets | unavailable: in-app browser reported a 0×0 hidden viewport |
+| #   | Check                        | Result                                                                          |
+| --- | ---------------------------- | ------------------------------------------------------------------------------- |
+| 1   | Home data and media          | 3 category cards, 4 new-arrival cards, all product images loaded at 900px width |
+| 2   | Fonts and surfaces           | Fraunces + Plus Jakarta Sans loaded; body background `rgb(250, 247, 241)`       |
+| 3   | Empty register submit        | name, email and password errors shown; form not sent                            |
+| 4   | Password toggle              | `password` → `text` → `password`, label and `aria-pressed` update               |
+| 5   | Register valid data          | 201, session created, lands on `/account` as customer                           |
+| 6   | Sign out                     | cookie cleared, redirect to `/login`                                            |
+| 7   | Empty login submit           | email and password required errors, both fields `aria-invalid`                  |
+| 8   | Wrong password               | "Invalid email or password" alert                                               |
+| 9   | Valid login                  | returns to `/account`                                                           |
+| 10  | Admin promotion + reload     | role shows ADMIN; `/admin` shows "Admin access granted" from `/admin/ping`      |
+| 11  | Footer while signed in       | account link, plus admin console link for admins; no guest links                |
+| 12  | Unknown URL                  | 404 page with store and new-arrivals links                                      |
+| 13  | Console                      | no React warnings or errors; only the expected guest `/auth/refresh` 401        |
+| 14  | Screenshots / scroll offsets | unavailable: in-app browser reported a 0×0 hidden viewport                      |
 
 The UI test user was deleted from MongoDB after the run. The only API request
 added by this refresh was the existing session bootstrap; no endpoints changed.
 
 ### Verified Phase 7 results (46 API checks + browser)
 
-| Area | Checks |
-|---|---|
-| Addresses | anonymous `401`, invalid body `400` with 6 field errors, first auto-default, one default after switching, edit, delete non-default, delete default promotes remaining |
-| Quote | subtotal from `priceAtAdd`, ₹49 shipping below the threshold, free shipping at quantity 3, GST inclusive (`7612` on `49900`), total `54800` |
-| Order errors | unknown address `404`, coupon `400`, empty cart `400` |
-| Order creation | `201`, `ORD-YYYYMMDD-XXXXXX`, `placed` / `pending`, item + address snapshots, totals match the quote, cart cleared, stock −1 |
-| Order reads | list includes the new order, detail `200`, another user `404`, snapshot survives address deletion |
-| Browser | address empty state, validation mapping, add/second/default/edit, two-step delete, checkout pre-selection and totals, order placement, confirmation, history, empty-cart checkout, guest redirects, no console errors |
+| Area           | Checks                                                                                                                                                                                                                |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Addresses      | anonymous `401`, invalid body `400` with 6 field errors, first auto-default, one default after switching, edit, delete non-default, delete default promotes remaining                                                 |
+| Quote          | subtotal from `priceAtAdd`, ₹49 shipping below the threshold, free shipping at quantity 3, GST inclusive (`7612` on `49900`), total `54800`                                                                           |
+| Order errors   | unknown address `404`, coupon `400`, empty cart `400`                                                                                                                                                                 |
+| Order creation | `201`, `ORD-YYYYMMDD-XXXXXX`, `placed` / `pending`, item + address snapshots, totals match the quote, cart cleared, stock −1                                                                                          |
+| Order reads    | list includes the new order, detail `200`, another user `404`, snapshot survives address deletion                                                                                                                     |
+| Browser        | address empty state, validation mapping, add/second/default/edit, two-step delete, checkout pre-selection and totals, order placement, confirmation, history, empty-cart checkout, guest redirects, no console errors |
 
 `typecheck`, `lint`, `format:check` and `build` pass for both apps. The in-app
 browser still reports a 0×0 hidden viewport, so checks used DOM snapshots,
@@ -1692,31 +1798,48 @@ DOM-triggered interactions, network and console logs.
 
 ### Verified Phase 8 results (60 API checks + browser)
 
-| Area | Checks |
-|---|---|
-| Boundaries | no token `401`, invalid order id `400`, unknown order `404`, cross-user start/verify `404` |
-| Creation | mock provider, amount/currency from the order, `keyId`, `attempts: 1`, no payment id before capture, repeat start reuses the same document/provider order |
-| Signatures | wrong signature `400`, malformed signature `400`, order unchanged, mock completion returns a 64-hex signature, tampered payment id `400` |
-| Success | valid verify `200`, payment `paid`, provider payment id stored, order `paid` + `confirmed`, replay idempotent, paid order start `409`, abandon no-op |
-| Failure | mock failure → `failed` / `simulated_failure`, order failed, retry new provider order + `attempts: 2` + order pending, abandon → `failed` / `abandoned`, idempotent abandon, third attempt allowed |
-| Webhook | missing/invalid signature `400`, signed malformed JSON `400`, unknown order ignored, amount mismatch ignored, `payment.failed` handled, `payment.captured` → paid/confirmed, replay idempotent |
-| Browser | payment panel, mock success → CONFIRMED/PAID + toast, failure → PAYMENT FAILED + Retry, retry opens a session, cancel returns to failed, no React console errors |
+| Area       | Checks                                                                                                                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Boundaries | no token `401`, invalid order id `400`, unknown order `404`, cross-user start/verify `404`                                                                                                         |
+| Creation   | mock provider, amount/currency from the order, `keyId`, `attempts: 1`, no payment id before capture, repeat start reuses the same document/provider order                                          |
+| Signatures | wrong signature `400`, malformed signature `400`, order unchanged, mock completion returns a 64-hex signature, tampered payment id `400`                                                           |
+| Success    | valid verify `200`, payment `paid`, provider payment id stored, order `paid` + `confirmed`, replay idempotent, paid order start `409`, abandon no-op                                               |
+| Failure    | mock failure → `failed` / `simulated_failure`, order failed, retry new provider order + `attempts: 2` + order pending, abandon → `failed` / `abandoned`, idempotent abandon, third attempt allowed |
+| Webhook    | missing/invalid signature `400`, signed malformed JSON `400`, unknown order ignored, amount mismatch ignored, `payment.failed` handled, `payment.captured` → paid/confirmed, replay idempotent     |
+| Browser    | payment panel, mock success → CONFIRMED/PAID + toast, failure → PAYMENT FAILED + Retry, retry opens a session, cancel returns to failed, no React console errors                                   |
 
 Screenshots remain unavailable because the in-app browser reports a 0×0 hidden
 viewport.
 
 ### Verified Phase 9 results (66 API checks + browser)
 
-| Area | Checks |
-|---|---|
-| Cancellation boundaries | anonymous `401`, unknown order `404`, invalid body `400`, cancel while `placed` → `cancelled`, stock restored once, repeat cancel idempotent, nested cancels, `shipped`/`delivered` cancel `409` |
-| Refunds | paid cancel → payment `refund_pending` → `refunded`, `refundId` + `refundedAt` stored, order `paymentStatus: refunded`, payment late-arriving on a cancelled order auto-refunded |
-| Admin list | customer `403`, `status` filter, `userId` filter, pagination meta, customer name/email summaries, unknown detail `404` |
-| Admin transitions | unpaid confirm `409`, invalid transition `400`, stale transition `409`, confirm → ship with tracking → deliver, partial tracking `400`, admin cancel restores stock and refunds, terminal states have no moves |
-| Browser | unpaid cancel timeline, paid cancel shows CANCELLED + PAYMENT REFUNDED, cross-account order `404`, 17-order admin table with customer/status/payment/total, `?status=shipped` empty state, ship button disabled until both fields, SHIPPED + tracking card, delivered timeline, no console errors |
+| Area                    | Checks                                                                                                                                                                                                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cancellation boundaries | anonymous `401`, unknown order `404`, invalid body `400`, cancel while `placed` → `cancelled`, stock restored once, repeat cancel idempotent, nested cancels, `shipped`/`delivered` cancel `409`                                                                                                  |
+| Refunds                 | paid cancel → payment `refund_pending` → `refunded`, `refundId` + `refundedAt` stored, order `paymentStatus: refunded`, payment late-arriving on a cancelled order auto-refunded                                                                                                                  |
+| Admin list              | customer `403`, `status` filter, `userId` filter, pagination meta, customer name/email summaries, unknown detail `404`                                                                                                                                                                            |
+| Admin transitions       | unpaid confirm `409`, invalid transition `400`, stale transition `409`, confirm → ship with tracking → deliver, partial tracking `400`, admin cancel restores stock and refunds, terminal states have no moves                                                                                    |
+| Browser                 | unpaid cancel timeline, paid cancel shows CANCELLED + PAYMENT REFUNDED, cross-account order `404`, 17-order admin table with customer/status/payment/total, `?status=shipped` empty state, ship button disabled until both fields, SHIPPED + tracking card, delivered timeline, no console errors |
 
 `typecheck`, `lint`, `format:check` and `build` pass for both apps. Screenshots
 remain unavailable because the in-app browser reports a 0×0 hidden viewport.
+
+### Verified Phase 10 results (44 API checks + browser)
+
+| Area      | Checks                                                                                                                                                                                                                                         |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard | admin stats `200` with revenue/order/customer/product counters, `dailySales` exactly 7 buckets, customer `403`                                                                                                                                 |
+| Coupons   | create percentage (10% capped at ₹50), duplicate `409`, case-insensitive validate, quote/order discount, usage `0 → 1` on order, back to `0` on cancel, single-use coupon exhausted, expired/future/min-order/inactive rejected, active filter |
+| Customers | list includes the new customer with order count and spend, detail includes recent orders, deactivate → existing access token `401`, reactivate `200`                                                                                           |
+| Catalogue | category create/update/delete, product create/update/stock/delete, soft-deleted product `404` on the storefront                                                                                                                                |
+| Uploads   | no file `400`, `text/plain` `400`, valid PNG `503` when Cloudinary is unconfigured                                                                                                                                                             |
+| Browser   | dashboard live data, coupon form create + toggle, customer detail panel, checkout coupon ₹523 → remove ₹548, no React console errors                                                                                                           |
+
+Cloudinary was not configured in this environment, so a real vendor upload was
+not exercised; the signed request path is covered by the validation and
+`503` short-circuit checks. Test coupons, the temporary address and the cart
+were removed after the run. Screenshots remain unavailable because the in-app
+browser reports a 0×0 hidden viewport.
 
 ---
 
@@ -1744,29 +1867,31 @@ remain unavailable because the in-app browser reports a 0×0 hidden viewport.
 
 ### Commit history so far
 
-| Commit | Message |
-|---|---|
-| `53b113e` | chore(repo): initialize monorepo and phase 0 architecture docs |
-| `332cb21` | feat(server): add Express TypeScript foundation with health check |
-| `69d9963` | docs: record phase 0 repository setup and completion status |
-| `c5b8dd2` | docs: mark phase 1 complete and document server setup |
-| `a686772` | refactor(server): remove unused ApiError flag |
-| `49f0fd7` | feat(auth): add JWT authentication and role-based access |
-| `1639558` | feat(catalog): add category and product management |
-| `0e6367f` | feat(client): add React frontend foundation |
-| `fa30e3e` | docs: record phase 4 commit in project guide |
-| `7295129` | feat(ui): refresh storefront design and shared primitives |
-| `59e2e10` | docs: record UI refresh commit in project guide |
+| Commit    | Message                                                                |
+| --------- | ---------------------------------------------------------------------- |
+| `53b113e` | chore(repo): initialize monorepo and phase 0 architecture docs         |
+| `332cb21` | feat(server): add Express TypeScript foundation with health check      |
+| `69d9963` | docs: record phase 0 repository setup and completion status            |
+| `c5b8dd2` | docs: mark phase 1 complete and document server setup                  |
+| `a686772` | refactor(server): remove unused ApiError flag                          |
+| `49f0fd7` | feat(auth): add JWT authentication and role-based access               |
+| `1639558` | feat(catalog): add category and product management                     |
+| `0e6367f` | feat(client): add React frontend foundation                            |
+| `fa30e3e` | docs: record phase 4 commit in project guide                           |
+| `7295129` | feat(ui): refresh storefront design and shared primitives              |
+| `59e2e10` | docs: record UI refresh commit in project guide                        |
 | `5878956` | feat(storefront): add catalogue, product detail and profile management |
-| `05d82a7` | docs: record phase 5 in project guide |
-| `4d9c6d6` | feat(storefront): add cart and wishlist with server-side pricing |
-| `94c4953` | docs: record phase 6 in project guide and API contract |
-| `43864c0` | docs: correct phase 6 concepts note |
-| `84d6943` | feat(storefront): add checkout, addresses and order placement |
-| `e08414d` | docs: record phase 7 checkout and order flow |
-| `22296a9` | feat(payments): add razorpay order flow with signed verification |
-| `26213ca` | docs: record phase 8 payment integration |
+| `05d82a7` | docs: record phase 5 in project guide                                  |
+| `4d9c6d6` | feat(storefront): add cart and wishlist with server-side pricing       |
+| `94c4953` | docs: record phase 6 in project guide and API contract                 |
+| `43864c0` | docs: correct phase 6 concepts note                                    |
+| `84d6943` | feat(storefront): add checkout, addresses and order placement          |
+| `e08414d` | docs: record phase 7 checkout and order flow                           |
+| `22296a9` | feat(payments): add razorpay order flow with signed verification       |
+| `26213ca` | docs: record phase 8 payment integration                               |
 | `fefea39` | feat(orders): add lifecycle, cancellation refunds and admin order desk |
+| `609a4e5` | docs: record phase 9 in project guide                                  |
+| `9a0fd99` | feat(admin): add dashboard, coupons and catalogue management           |
 
 ---
 
@@ -2138,74 +2263,75 @@ accidentally skipped.
 
 ## 14. Glossary
 
-| Term | Meaning |
-|---|---|
-| Access token | Short-lived JWT proving identity |
-| Refresh token | Long-lived token used to obtain new access tokens |
-| Rotation | Replacing the refresh token on every refresh |
-| Reuse detection | Revoking a session when an old refresh token is replayed |
-| RBAC | Role-based access control (`customer`, `admin`) |
-| Middleware | Function running between request and controller |
-| DTO | Data transfer object; the safe shape returned to clients |
-| Envelope | Standard success/error JSON wrapper |
-| Soft delete | Marking inactive instead of removing |
-| Snapshot | Copy of data stored at a point in time |
-| Paise | 1/100 of a rupee; integer money unit |
-| Slug | URL-friendly unique name, e.g. `wireless-mouse` |
-| Idempotent | Repeating the operation gives the same result |
-| Optimistic update | Applying a change in the UI before the server confirms it, then rolling back on error |
-| Price snapshot | The price stored on a cart line when the item was added, independent of later catalogue edits |
-| Address snapshot | A copy of the delivery address stored on the order, unaffected by later edits |
-| GST-inclusive | Tax already contained in the quoted price (`round(total × 18 / 118)`) |
-| Compensating rollback | Undoing earlier successful writes when a later step fails |
-| Default address | The single address pre-selected at checkout |
-| Gateway order | The provider's own order object (`order_*`) that a checkout is opened against |
-| HMAC | Keyed hash used as a signature; here SHA-256 over a known payload |
-| Signature | Hex digest proving the payload came from someone holding the secret |
-| Webhook | Server-to-server callback sent by the gateway after an event |
-| Raw body | The unparsed request bytes, required to verify a signature |
-| Timing-safe comparison | Comparing secrets in constant time to avoid leaking information |
-| Mock provider | Local payment simulator that keeps the real signing and verification code paths |
-| Status history | Append-only `{ status, at, note }` events describing how an order reached its current state |
-| Conditional update | `findOneAndUpdate` with the expected status in the filter; returns nothing if another request already moved it |
-| Optimistic concurrency | Preventing lost updates by making the write succeed only if the row still matches the state you read |
-| Compensating action | Undoing a completed step when a later step fails, e.g. restoring stock or issuing a refund |
-| Refund claim | The atomic `paid → refund_pending` update that guarantees one in-flight refund per payment |
-| N+1 query | Loading a list and then querying once per row; avoided here with a batched `$in` lookup |
-| `select: false` | Mongoose field hidden unless explicitly requested |
-| Hydrated document | Mongoose document instance, not a plain object |
-| CSRF | Cross-site request forgery |
-| XSS | Cross-site scripting |
-| JWT `sub` | Subject claim, here the user id |
-| JWT `jti` | Unique token id claim |
+| Term                   | Meaning                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Access token           | Short-lived JWT proving identity                                                                               |
+| Refresh token          | Long-lived token used to obtain new access tokens                                                              |
+| Rotation               | Replacing the refresh token on every refresh                                                                   |
+| Reuse detection        | Revoking a session when an old refresh token is replayed                                                       |
+| RBAC                   | Role-based access control (`customer`, `admin`)                                                                |
+| Middleware             | Function running between request and controller                                                                |
+| DTO                    | Data transfer object; the safe shape returned to clients                                                       |
+| Envelope               | Standard success/error JSON wrapper                                                                            |
+| Soft delete            | Marking inactive instead of removing                                                                           |
+| Snapshot               | Copy of data stored at a point in time                                                                         |
+| Paise                  | 1/100 of a rupee; integer money unit                                                                           |
+| Slug                   | URL-friendly unique name, e.g. `wireless-mouse`                                                                |
+| Idempotent             | Repeating the operation gives the same result                                                                  |
+| Optimistic update      | Applying a change in the UI before the server confirms it, then rolling back on error                          |
+| Price snapshot         | The price stored on a cart line when the item was added, independent of later catalogue edits                  |
+| Address snapshot       | A copy of the delivery address stored on the order, unaffected by later edits                                  |
+| GST-inclusive          | Tax already contained in the quoted price (`round(total × 18 / 118)`)                                          |
+| Compensating rollback  | Undoing earlier successful writes when a later step fails                                                      |
+| Default address        | The single address pre-selected at checkout                                                                    |
+| Gateway order          | The provider's own order object (`order_*`) that a checkout is opened against                                  |
+| HMAC                   | Keyed hash used as a signature; here SHA-256 over a known payload                                              |
+| Signature              | Hex digest proving the payload came from someone holding the secret                                            |
+| Webhook                | Server-to-server callback sent by the gateway after an event                                                   |
+| Raw body               | The unparsed request bytes, required to verify a signature                                                     |
+| Timing-safe comparison | Comparing secrets in constant time to avoid leaking information                                                |
+| Mock provider          | Local payment simulator that keeps the real signing and verification code paths                                |
+| Status history         | Append-only `{ status, at, note }` events describing how an order reached its current state                    |
+| Conditional update     | `findOneAndUpdate` with the expected status in the filter; returns nothing if another request already moved it |
+| Optimistic concurrency | Preventing lost updates by making the write succeed only if the row still matches the state you read           |
+| Compensating action    | Undoing a completed step when a later step fails, e.g. restoring stock or issuing a refund                     |
+| Refund claim           | The atomic `paid → refund_pending` update that guarantees one in-flight refund per payment                     |
+| N+1 query              | Loading a list and then querying once per row; avoided here with a batched `$in` lookup                        |
+| `select: false`        | Mongoose field hidden unless explicitly requested                                                              |
+| Hydrated document      | Mongoose document instance, not a plain object                                                                 |
+| CSRF                   | Cross-site request forgery                                                                                     |
+| XSS                    | Cross-site scripting                                                                                           |
+| JWT `sub`              | Subject claim, here the user id                                                                                |
+| JWT `jti`              | Unique token id claim                                                                                          |
 
 ---
 
 ## 15. Known limitations and deferred work
 
-| Area | Limitation | Plan |
-|---|---|---|
-| Payments | No real merchant credentials are used here, so development runs `PAYMENT_MODE=mock`; the `razorpay` path is coded but not exercised against the live API | Swap test keys into `server/.env` and set `PAYMENT_MODE=razorpay` |
-| Refunds | Refunds are implemented for cancellation, but there is no standalone admin refund screen or partial-refund UI | Add partial refunds and a refund audit view if required |
-| Webhook retries | The endpoint is idempotent but no queue/backoff is added for failed processing | Phase 12 |
-| Order lifecycle | Customer cancel and admin confirm/ship/deliver/cancel are implemented; tracking is manual, not fed by a carrier API | Carrier integration later |
-| Coupons | The hook rejects every code; no coupon documents or discounts | Phase 10 |
-| Stock safety | Conditional updates with rollback, not MongoDB transactions | Transactions need a replica set; document in Phase 12 |
-| Profile API | Name and password only; email changes and avatar upload are not built | Later |
-| Client tests | Manual browser checks only | Phase 11 |
-| UI verification | No screenshots captured; in-app browser had no viewport | Re-check visuals when a real browser is available |
-| Catalogue images | One image per seeded product, so the gallery is exercised by code but not by sample data | Add more images in Phase 10 |
-| Product images | URL strings only, no upload | Cloudinary in Phase 10 |
-| Ratings | Aggregate fields exist but no review documents | Phase 11 |
-| Multi-device sessions | One refresh hash per user | Sessions collection later |
-| Automated tests | Manual checks only | Phase 11 |
-| Rate limiting | Not implemented | Phase 11 |
-| CSRF token | Not needed for same-site dev; required for cross-site prod | Phase 11 |
-| Swagger/OpenAPI | Not implemented | Optional later |
-| Redis, jobs, email | Not implemented | Phase 12 |
-| Docker | Not installed | Phase 12 |
-| Deployment/CI | Not implemented | Phase 13 |
-| Admin seed cleanup | Test admin deleted after verification | Create your own with the script |
+| Area                  | Limitation                                                                                                                                               | Plan                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Payments              | No real merchant credentials are used here, so development runs `PAYMENT_MODE=mock`; the `razorpay` path is coded but not exercised against the live API | Swap test keys into `server/.env` and set `PAYMENT_MODE=razorpay` |
+| Refunds               | Refunds are implemented for cancellation, but there is no standalone admin refund screen or partial-refund UI                                            | Add partial refunds and a refund audit view if required           |
+| Webhook retries       | The endpoint is idempotent but no queue/backoff is added for failed processing                                                                           | Phase 12                                                          |
+| Order lifecycle       | Customer cancel and admin confirm/ship/deliver/cancel are implemented; tracking is manual, not fed by a carrier API                                      | Carrier integration later                                         |
+| Coupons               | One code per order, no stacking, automatic campaigns or per-customer limits                                                                              | Extend the pricing service when those rules are required          |
+| Cloudinary            | Uploads need `CLOUDINARY_*` credentials; without them the endpoint returns `503` and products use image URLs                                             | Add credentials to `server/.env` to exercise real uploads         |
+| Stock safety          | Conditional updates with rollback, not MongoDB transactions                                                                                              | Transactions need a replica set; document in Phase 12             |
+| Profile API           | Name and password only; email changes and avatar upload are not built                                                                                    | Later                                                             |
+| Client tests          | Manual browser checks only                                                                                                                               | Phase 11                                                          |
+| UI verification       | No screenshots captured; in-app browser had no viewport                                                                                                  | Re-check visuals when a real browser is available                 |
+| Catalogue images      | Seed data still ships one image per product even though the admin form accepts up to five                                                                | Add more images to the seed if a gallery demo is needed           |
+| Product images        | Uploads are Cloudinary-only and require credentials                                                                                                      | Add credentials to `server/.env`                                  |
+| Ratings               | Aggregate fields exist but no review documents                                                                                                           | Phase 11                                                          |
+| Multi-device sessions | One refresh hash per user                                                                                                                                | Sessions collection later                                         |
+| Automated tests       | Manual checks only                                                                                                                                       | Phase 11                                                          |
+| Rate limiting         | Not implemented                                                                                                                                          | Phase 11                                                          |
+| CSRF token            | Not needed for same-site dev; required for cross-site prod                                                                                               | Phase 11                                                          |
+| Swagger/OpenAPI       | Not implemented                                                                                                                                          | Optional later                                                    |
+| Redis, jobs, email    | Not implemented                                                                                                                                          | Phase 12                                                          |
+| Docker                | Not installed                                                                                                                                            | Phase 12                                                          |
+| Deployment/CI         | Not implemented                                                                                                                                          | Phase 13                                                          |
+| Admin seed cleanup    | Test admin deleted after verification                                                                                                                    | Create your own with the script                                   |
 
 Known bugs: none.
 
@@ -2213,9 +2339,9 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 10 — Admin Dashboard: admin layout and dashboard, sales/revenue analytics,
-product/inventory/customer/coupon management, Cloudinary image uploads, and
-low-stock/top-product reports.
+Phase 11 — Testing and Security: unit and integration tests for services and
+critical flows, frontend component tests, rate limiting, security headers,
+stricter CORS, CSRF protection for the refresh cookie, and review hardening.
 
 Do not start until the reviewer explicitly says:
 

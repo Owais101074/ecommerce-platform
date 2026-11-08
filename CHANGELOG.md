@@ -200,7 +200,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   plus `cancelled`, backed by a server-owned transition map and a
   `statusHistory[]` of `{ status, at, note }` events.
 - **Phase 9** — `tracking` on the order stores `{ carrier, trackingNumber,
-  updatedAt }`; cancelling clears it and the detail page renders it.
+updatedAt }`; cancelling clears it and the detail page renders it.
 - **Phase 9** — `PATCH /orders/:id/cancel`: owner-scoped, allowed only for
   `placed` and `confirmed`, conditional update so concurrent cancels cannot
   double-restore stock, idempotent repeat cancel, stock restored per line.
@@ -223,6 +223,32 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **Phase 9** — `/admin/orders` table with status filter chips and pagination,
   and `/admin/orders/:id` with items, address snapshot, timeline, tracking,
   customer details and status actions. Both sit behind `RequireAdmin`.
+- **Phase 10** — `coupons` collection with an uppercase unique code, percentage
+  or fixed value in paise, minimum order, optional maximum discount, start and
+  expiry dates, optional usage limit, usage counter and active flag.
+- **Phase 10** — `POST /coupons/validate` computes the discount from the
+  customer's current cart; `GET/POST /coupons` and `PATCH/DELETE /coupons/:id`
+  give admins listing, creation, editing and deactivation with duplicate-code
+  `409`s and date/value refinements.
+- **Phase 10** — checkout quotes and order placement accept `couponCode`,
+  recompute the discount server-side, claim coupon usage atomically with a
+  conditional `$inc`, and release it when the order is cancelled.
+- **Phase 10** — `GET /admin/stats` aggregates paid revenue, order statuses,
+  customer and catalogue counters, a seven-day revenue series, top products
+  (cancelled orders excluded), low-stock products and recent orders.
+- **Phase 10** — admin customer list and detail with order counts, lifetime
+  spend (paid orders only) and recent orders resolved through batched
+  aggregations; deactivation clears the refresh session and blocks the access
+  token immediately.
+- **Phase 10** — `POST /admin/uploads/product-image` accepts JPEG/PNG/WebP up to
+  5 MB, signs the Cloudinary upload on the server and returns the secure URL
+  (`503` when Cloudinary is not configured).
+- **Phase 10** — `AdminLayout` with section navigation plus dashboard, products,
+  categories, customers and coupons pages; product management supports image
+  upload or URL entry, stock badges and soft delete.
+- **Phase 10** — checkout coupon card with apply/remove, server quote refresh,
+  discount and recalculated GST/total, and a remove action when the quote
+  rejects the applied code.
 
 ### Fixed
 
@@ -240,7 +266,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Access token + httpOnly refresh token authentication.
 - Refresh tokens are stored as SHA-256 hashes, never in plain text.
 - Refresh token reuse is treated as theft and clears the stored session.
-- Cloudinary uploads deferred to Phase 10; Phase 3 uses image URLs.
+- Cloudinary uploads are signed by the server; products still store image URLs,
+  so the catalogue never blocks on a vendor account.
 - Catalogue slugs are generated from names and made unique with numeric suffixes.
 - Category deletion is blocked while active children or products exist.
 - Product search uses a MongoDB text index on name and description.
@@ -278,7 +305,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   transactions on a standalone MongoDB.
 - Order numbers use the UTC date plus six random hex characters, backed by a
   unique index.
-- Coupon codes are rejected until Phase 10 instead of silently ignoring them.
+- Coupon codes are validated on the server against the cart subtotal instead of
+  being rejected or trusted from the client.
 - Payment stays `pending` when an order is placed; Phase 8 adds gateway creation,
   signature verification and webhooks.
 - Payments are recorded in their own collection with a unique `orderId`, so the
@@ -325,6 +353,25 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   customer order routes, keeping role guards and payload shapes separate.
 - The client timeline renders only server-provided history; there is no
   client-side status inference.
+- Coupon discounts are computed in integer paise on the server, capped at the
+  subtotal, and applied before shipping and GST; the client only displays the
+  quote.
+- Coupon usage is claimed with a conditional `$inc` guarded by the date window,
+  active flag and `usedCount < maxUses`, then released when order creation fails
+  or the order is cancelled. This prevents over-redemption without transactions.
+- Admin analytics use MongoDB aggregations and paid orders only; the seven-day
+  series buckets by UTC day so the chart matches stored timestamps.
+- Admin customer spending is computed in one aggregation and recent orders are
+  mapped through the existing admin order mapper, avoiding N+1 queries.
+- Customer deactivation relies on the existing `isActive` check in
+  `authenticate`, so an already-issued access token stops working immediately
+  rather than waiting for it to expire.
+- Cloudinary uploads use a server-generated SHA-1 signature over
+  `folder` and `timestamp`; the API secret never reaches the browser. The
+  endpoint returns `503` when credentials are absent so local development stays
+  vendor-independent.
+- Admin product and category pages reuse the public read endpoints and the
+  existing admin CRUD endpoints; no duplicate catalogue API was added.
 
 ### Verified
 
@@ -363,13 +410,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   refresh with the revoked cookie 401, login with the old password 401, login
   with the new password 200.
 - Phase 5 browser checks: catalogue shows all six products, category + in-stock
-  + price sorting returns the two electronics in ascending order, search and
-  chip removal rewrite the URL, product detail renders breadcrumbs, price,
-  stock, gallery fallback, "no ratings yet" and related products, unknown
-  product and category slugs show their error states, profile update refreshes
-  the header name and shows a success alert, a wrong current password shows the
-  API message, and a successful password change lands on `/login` with the
-  re-login notice.
+  - price sorting returns the two electronics in ascending order, search and
+    chip removal rewrite the URL, product detail renders breadcrumbs, price,
+    stock, gallery fallback, "no ratings yet" and related products, unknown
+    product and category slugs show their error states, profile update refreshes
+    the header name and shows a success alert, a wrong current password shows the
+    API message, and a successful password change lands on `/login` with the
+    re-login notice.
 - Phase 5 network log: `PATCH /users/me` 200, password 400 then 200, logout 200,
   old password login 401, new password login 200. Console has no React errors.
 - Phase 7 API live checks (46): anonymous address list 401, invalid address 400
@@ -426,6 +473,24 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   `?status=shipped` and renders the empty state; "Mark shipped" stays disabled
   until carrier and tracking are supplied, then shows the SHIPPED timeline and
   tracking card; "Mark delivered" completes the timeline. No console errors.
+- Phase 10 API live checks (44): admin login and stats shape, customer `403`s on
+  admin/coupon routes, percentage coupon creation, duplicate `409`,
+  case-insensitive validation, quote and order discount, usage claimed on order,
+  released on cancellation, single-use exhaustion, expired/future/minimum-order
+  and inactive rejections, active filter, customer list/detail and immediate
+  session rejection after deactivation, reactivation, category and product
+  creation/update/stock/soft delete, hidden soft-deleted product, upload `400`s
+  for a missing file and wrong type, and `503` for a valid image when Cloudinary
+  is not configured.
+- Phase 10 browser checks: dashboard renders live revenue, order pipeline,
+  seven-day chart, top products, low stock and recent orders; coupons page
+  creates a coupon through the form, toggles it inactive and back; customers page
+  opens a detail panel with spending, recent orders and deactivation; checkout
+  applies a coupon (₹499 + ₹49 shipping − ₹25 = ₹523) and removes it back to
+  ₹548. Test coupons, the temporary address and the cart were removed afterwards.
+- Cloudinary credentials were absent in this environment, so the live upload
+  path was verified through validation (missing file, wrong type) and the
+  documented `503` short-circuit, not a real vendor upload.
 - `typecheck`, `lint`, `format:check`, and `build` pass for both apps; the
   client build reports only the expected single-chunk size advisory.
 - `npm audit --omit=dev` reports 0 vulnerabilities; the remaining moderate

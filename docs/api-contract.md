@@ -5,17 +5,17 @@ Phases 1–9 are live.
 
 ## Conventions
 
-| Rule | Value |
-|---|---|
-| Base URL | `/api/v1` |
-| Format | JSON (`application/json`), except the payment webhook (raw body) |
-| Auth | `Authorization: Bearer <accessToken>` for protected routes |
-| Roles | `customer` (default), `admin` |
+| Rule       | Value                                                                            |
+| ---------- | -------------------------------------------------------------------------------- |
+| Base URL   | `/api/v1`                                                                        |
+| Format     | JSON (`application/json`), except the payment webhook (raw body)                 |
+| Auth       | `Authorization: Bearer <accessToken>` for protected routes                       |
+| Roles      | `customer` (default), `admin`                                                    |
 | Pagination | `?page=1&limit=20`; responses include `meta: { page, limit, total, totalPages }` |
-| Sorting | `?sort=price_asc`, `price_desc`, `newest`, `rating` |
-| Money | Integer **paise** in every request/response field |
-| Public IDs | Products and categories use `slug`; other resources use ObjectId |
-| Deletes | Soft delete; deleted resources return `404` |
+| Sorting    | `?sort=price_asc`, `price_desc`, `newest`, `rating`                              |
+| Money      | Integer **paise** in every request/response field                                |
+| Public IDs | Products and categories use `slug`; other resources use ObjectId                 |
+| Deletes    | Soft delete; deleted resources return `404`                                      |
 
 ### Success envelope
 
@@ -40,54 +40,54 @@ Phases 1–9 are live.
 
 ### Status codes
 
-| Code | Meaning |
-|---|---|
-| 200 | OK |
-| 201 | Created |
-| 204 | Deleted, no body |
-| 400 | Validation / business rule error |
-| 401 | Missing or invalid token |
-| 403 | Authenticated but role not allowed |
-| 404 | Resource not found |
-| 409 | Duplicate (email, slug, coupon code) |
-| 422 | Semantically invalid (e.g. out of stock) |
-| 429 | Rate limited |
-| 500 | Unexpected server error |
+| Code | Meaning                                  |
+| ---- | ---------------------------------------- |
+| 200  | OK                                       |
+| 201  | Created                                  |
+| 204  | Deleted, no body                         |
+| 400  | Validation / business rule error         |
+| 401  | Missing or invalid token                 |
+| 403  | Authenticated but role not allowed       |
+| 404  | Resource not found                       |
+| 409  | Duplicate (email, slug, coupon code)     |
+| 422  | Semantically invalid (e.g. out of stock) |
+| 429  | Rate limited                             |
+| 500  | Unexpected server error                  |
 
 ---
 
 ## Health — Phase 1
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/health` | public | Liveness + MongoDB connection state |
+| Method | Endpoint  | Access | Purpose                             |
+| ------ | --------- | ------ | ----------------------------------- |
+| GET    | `/health` | public | Liveness + MongoDB connection state |
 
 ## Auth — Phase 2
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| POST | `/auth/register` | public | Create customer account |
-| POST | `/auth/login` | public | Returns access token; sets refresh cookie |
-| POST | `/auth/refresh` | public (cookie) | Rotate refresh token, issue access token |
-| POST | `/auth/logout` | public (cookie) | Revoke refresh token, clear cookie |
-| GET | `/auth/me` | auth | Current session user |
+| Method | Endpoint         | Access          | Purpose                                   |
+| ------ | ---------------- | --------------- | ----------------------------------------- |
+| POST   | `/auth/register` | public          | Create customer account                   |
+| POST   | `/auth/login`    | public          | Returns access token; sets refresh cookie |
+| POST   | `/auth/refresh`  | public (cookie) | Rotate refresh token, issue access token  |
+| POST   | `/auth/logout`   | public (cookie) | Revoke refresh token, clear cookie        |
+| GET    | `/auth/me`       | auth            | Current session user                      |
 
 The refresh token lives only in an httpOnly cookie scoped to `/api/v1/auth`.
 Access tokens are returned in the JSON body and sent as `Authorization: Bearer`.
 
 ## Admin smoke route — Phase 2
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/admin/ping` | admin | Verifies JWT authentication and role checks |
+| Method | Endpoint      | Access | Purpose                                     |
+| ------ | ------------- | ------ | ------------------------------------------- |
+| GET    | `/admin/ping` | admin  | Verifies JWT authentication and role checks |
 
 ## Users — Phase 5
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/users/me` | auth | Current profile |
-| PATCH | `/users/me` | auth | Update `{ name }` (2–50 characters) |
-| PATCH | `/users/me/password` | auth | Change password `{ currentPassword, newPassword }` |
+| Method | Endpoint             | Access | Purpose                                            |
+| ------ | -------------------- | ------ | -------------------------------------------------- |
+| GET    | `/users/me`          | auth   | Current profile                                    |
+| PATCH  | `/users/me`          | auth   | Update `{ name }` (2–50 characters)                |
+| PATCH  | `/users/me/password` | auth   | Change password `{ currentPassword, newPassword }` |
 
 The profile response is the same `user` shape used by `/auth/me`
 (`id`, `name`, `email`, `role`, `createdAt`). Email is read-only in Phase 5.
@@ -103,13 +103,13 @@ Password change rules:
 
 ## Addresses — Phase 7 (implemented)
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/addresses` | auth | List own addresses, default first |
-| POST | `/addresses` | auth | Add address |
-| PATCH | `/addresses/:id` | auth | Edit own address |
-| DELETE | `/addresses/:id` | auth | Remove own address |
-| PATCH | `/addresses/:id/default` | auth | Set default address |
+| Method | Endpoint                 | Access | Purpose                           |
+| ------ | ------------------------ | ------ | --------------------------------- |
+| GET    | `/addresses`             | auth   | List own addresses, default first |
+| POST   | `/addresses`             | auth   | Add address                       |
+| PATCH  | `/addresses/:id`         | auth   | Edit own address                  |
+| DELETE | `/addresses/:id`         | auth   | Remove own address                |
+| PATCH  | `/addresses/:id/default` | auth   | Set default address               |
 
 Every response wraps `data: { addresses: AddressDTO[] }` so the client can
 replace its cache in one write. `AddressDTO`:
@@ -145,46 +145,47 @@ Rules:
 
 ## Categories — Phase 3
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/categories` | public | Active categories as a nested tree |
-| GET | `/categories/:slug` | public | Category detail |
-| POST | `/categories` | admin | Create `{ name, description?, parentId? }` |
-| PATCH | `/categories/:id` | admin | Update name, description or parent |
-| DELETE | `/categories/:id` | admin | Soft delete; `409` if active children or products exist |
+| Method | Endpoint            | Access | Purpose                                                 |
+| ------ | ------------------- | ------ | ------------------------------------------------------- |
+| GET    | `/categories`       | public | Active categories as a nested tree                      |
+| GET    | `/categories/:slug` | public | Category detail                                         |
+| POST   | `/categories`       | admin  | Create `{ name, description?, parentId? }`              |
+| PATCH  | `/categories/:id`   | admin  | Update name, description or parent                      |
+| DELETE | `/categories/:id`   | admin  | Soft delete; `409` if active children or products exist |
 
 Slugs are generated from the name. A duplicate name gets `-2`, `-3`, and so on.
 A category cannot be its own parent, and cycles in the hierarchy are rejected.
 
 ## Products — Phase 3
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/products` | public | List with search, filters, sorting, pagination |
-| GET | `/products/:slug` | public | Detail |
-| POST | `/products` | admin | Create |
-| PATCH | `/products/:id` | admin | Update |
-| DELETE | `/products/:id` | admin | Soft delete |
-| PATCH | `/products/:id/stock` | admin | Set absolute stock `{ stock }` |
+| Method | Endpoint              | Access | Purpose                                        |
+| ------ | --------------------- | ------ | ---------------------------------------------- |
+| GET    | `/products`           | public | List with search, filters, sorting, pagination |
+| GET    | `/products/:slug`     | public | Detail                                         |
+| POST   | `/products`           | admin  | Create                                         |
+| PATCH  | `/products/:id`       | admin  | Update                                         |
+| DELETE | `/products/:id`       | admin  | Soft delete                                    |
+| PATCH  | `/products/:id/stock` | admin  | Set absolute stock `{ stock }`                 |
 
 List query parameters:
 
-| Parameter | Type | Notes |
-|---|---|---|
-| `q` | string | Full-text search on name and description |
-| `category` | string | Category **slug** |
-| `minPrice` | integer | Paise, inclusive |
-| `maxPrice` | integer | Paise, inclusive |
-| `rating` | number | Minimum average rating, 0–5 |
-| `inStock` | `true` \| `false` | Only products with stock > 0 when `true` |
-| `sort` | enum | `price_asc`, `price_desc`, `newest` (default), `rating` |
-| `page` | integer | Default 1 |
-| `limit` | integer | Default 20, max 100 |
+| Parameter  | Type              | Notes                                                   |
+| ---------- | ----------------- | ------------------------------------------------------- |
+| `q`        | string            | Full-text search on name and description                |
+| `category` | string            | Category **slug**                                       |
+| `minPrice` | integer           | Paise, inclusive                                        |
+| `maxPrice` | integer           | Paise, inclusive                                        |
+| `rating`   | number            | Minimum average rating, 0–5                             |
+| `inStock`  | `true` \| `false` | Only products with stock > 0 when `true`                |
+| `sort`     | enum              | `price_asc`, `price_desc`, `newest` (default), `rating` |
+| `page`     | integer           | Default 1                                               |
+| `limit`    | integer           | Default 20, max 100                                     |
 
 Responses include `meta: { page, limit, total, totalPages }`. Product payloads
 include `rating: { average, count }` and a `category` summary
-`{ id, name, slug }`. Prices are integer paise. Images are URL strings in
-Phase 3; Cloudinary uploads arrive in Phase 10.
+`{ id, name, slug }`. Prices are integer paise. Images remain URL strings;
+Phase 10 adds an upload endpoint that returns a Cloudinary URL for the client to
+store in `images`.
 
 Create body: `{ name, description, price, categoryId, images?, stock? }`.
 `images` defaults to `[]` and `stock` to `0`.
@@ -195,12 +196,12 @@ Product cards and detail pages currently show stored `ratingAvg` / `ratingCount`
 aggregates. Review documents and endpoints arrive with the testing and security
 phase; no review API exists yet.
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/products/:slug/reviews` | public | Paginated reviews + rating summary |
-| POST | `/products/:id/reviews` | auth | Create review (verified purchase later) |
-| PATCH | `/reviews/:id` | auth (owner) | Edit review |
-| DELETE | `/reviews/:id` | auth (owner/admin) | Delete review |
+| Method | Endpoint                  | Access             | Purpose                                 |
+| ------ | ------------------------- | ------------------ | --------------------------------------- |
+| GET    | `/products/:slug/reviews` | public             | Paginated reviews + rating summary      |
+| POST   | `/products/:id/reviews`   | auth               | Create review (verified purchase later) |
+| PATCH  | `/reviews/:id`            | auth (owner)       | Edit review                             |
+| DELETE | `/reviews/:id`            | auth (owner/admin) | Delete review                           |
 
 ## Cart — Phase 6 (implemented)
 
@@ -227,55 +228,70 @@ Every response wraps `data: { cart }`. The cart shape is:
 `priceChanged` is true when they differ. Inactive or deleted products are
 filtered out of the response.
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/cart` | auth | Cart with computed totals |
-| POST | `/cart/items` | auth | Add `{ productId, quantity }`; quantity 1–10, defaults to 1 |
-| PATCH | `/cart/items/:productId` | auth | Set quantity 1–10, re-checks stock |
-| DELETE | `/cart/items/:productId` | auth | Remove item; 404 if absent |
-| DELETE | `/cart` | auth | Clear cart |
+| Method | Endpoint                 | Access | Purpose                                                     |
+| ------ | ------------------------ | ------ | ----------------------------------------------------------- |
+| GET    | `/cart`                  | auth   | Cart with computed totals                                   |
+| POST   | `/cart/items`            | auth   | Add `{ productId, quantity }`; quantity 1–10, defaults to 1 |
+| PATCH  | `/cart/items/:productId` | auth   | Set quantity 1–10, re-checks stock                          |
+| DELETE | `/cart/items/:productId` | auth   | Remove item; 404 if absent                                  |
+| DELETE | `/cart`                  | auth   | Clear cart                                                  |
 
 Errors: `404` product/line not found, `409` product unavailable, out of stock or
 quantity above stock, `400` quantity outside 1–10.
 
 ## Wishlist — Phase 6 (implemented)
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/wishlist` | auth | Active products in save order |
-| POST | `/wishlist/:productId` | auth | Idempotent add; 404 if the product is missing |
-| DELETE | `/wishlist/:productId` | auth | Idempotent remove |
+| Method | Endpoint               | Access | Purpose                                       |
+| ------ | ---------------------- | ------ | --------------------------------------------- |
+| GET    | `/wishlist`            | auth   | Active products in save order                 |
+| POST   | `/wishlist/:productId` | auth   | Idempotent add; 404 if the product is missing |
+| DELETE | `/wishlist/:productId` | auth   | Idempotent remove                             |
 
-## Coupons — Phase 10
+## Coupons — Phase 10 (implemented)
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| POST | `/coupons/validate` | auth | Validate code against cart subtotal |
-| GET | `/admin/coupons` | admin | List |
-| POST | `/admin/coupons` | admin | Create |
-| PATCH | `/admin/coupons/:id` | admin | Update |
-| DELETE | `/admin/coupons/:id` | admin | Deactivate |
+| Method | Endpoint            | Access | Purpose                                                   |
+| ------ | ------------------- | ------ | --------------------------------------------------------- |
+| POST   | `/coupons/validate` | auth   | Validate code against cart subtotal                       |
+| GET    | `/coupons`          | admin  | List; `?search`, `?active=true\|false`, `?page`, `?limit` |
+| POST   | `/coupons`          | admin  | Create                                                    |
+| PATCH  | `/coupons/:id`      | admin  | Update                                                    |
+| DELETE | `/coupons/:id`      | admin  | Soft-deactivate                                           |
+
+`POST /coupons/validate` body `{ code }` and response
+`data: { coupon: { code, description, type, value, discount } }`.
+
+Create body:
+`{ code, description?, type: "percentage"|"fixed", value, minOrder?, maxDiscount?, startsAt?, expiresAt?, maxUses?, isActive? }`.
+`code` is trimmed and uppercased; `value` is a percentage (1–100) for
+`percentage` and integer paise for `fixed`; `minOrder`, `maxDiscount` are integer
+paise. `expiresAt` must be later than `startsAt`. Duplicate codes return `409`.
+
+Validation errors (`400`): inactive coupon, starts in the future, expired,
+usage limit reached, cart subtotal below `minOrder`, or unknown code. Checkout
+`POST /orders/quote` and `POST /orders` accept `couponCode`; the discount is
+recomputed server-side and `usedCount` is incremented atomically when the order
+is placed, then released if placement fails or the order is cancelled.
 
 ## Orders — Phase 7 (implemented)
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| POST | `/orders/quote` | auth | Server-computed checkout quote for the current cart |
-| POST | `/orders` | auth | Place order `{ addressId, couponCode? }` |
-| GET | `/orders` | auth | Own order history, `?page=1&limit=10` (max 50) |
-| GET | `/orders/:id` | auth | Own order detail |
+| Method | Endpoint        | Access | Purpose                                             |
+| ------ | --------------- | ------ | --------------------------------------------------- |
+| POST   | `/orders/quote` | auth   | Server-computed checkout quote for the current cart |
+| POST   | `/orders`       | auth   | Place order `{ addressId, couponCode? }`            |
+| GET    | `/orders`       | auth   | Own order history, `?page=1&limit=10` (max 50)      |
+| GET    | `/orders/:id`   | auth   | Own order detail                                    |
 
 Pricing is always computed on the server in integer paise from the cart's locked
 `priceAtAdd` values:
 
-| Rule | Value |
-|---|---|
-| `subtotal` | Sum of `priceAtAdd × quantity` |
-| `discount` | 0 until coupons land in Phase 10 |
-| `discountedSubtotal` | `max(subtotal - discount, 0)` |
-| `shipping` | 0 when empty or ≥ 99,900; otherwise 4,900 |
-| `tax` | `round(discountedSubtotal × 18 / 118)` (GST already inside the price) |
-| `total` | `discountedSubtotal + shipping` |
+| Rule                 | Value                                                                 |
+| -------------------- | --------------------------------------------------------------------- |
+| `subtotal`           | Sum of `priceAtAdd × quantity`                                        |
+| `discount`           | Coupon discount in paise (`0` when no code is supplied)               |
+| `discountedSubtotal` | `max(subtotal - discount, 0)`                                         |
+| `shipping`           | 0 when empty or ≥ 99,900; otherwise 4,900                             |
+| `tax`                | `round(discountedSubtotal × 18 / 118)` (GST already inside the price) |
+| `total`              | `discountedSubtotal + shipping`                                       |
 
 Quote response `data: { quote }`:
 
@@ -305,7 +321,9 @@ Rules and errors:
 
 - Empty cart → `400 Your cart is empty`.
 - Unknown or another user's address → `404 Address not found`.
-- A supplied coupon code → `400 Coupon codes are not available yet`.
+- An invalid coupon code → `400` with the reason (inactive, expired, usage
+  limit, minimum order, unknown). A code that is fully redeemed between quote
+  and order returns `409`.
 - Insufficient stock → `409 <product> no longer has <n> units in stock`; any
   stock already decremented for earlier lines is restored.
 - On success stock is decremented, the cart is cleared, and the order is saved
@@ -317,9 +335,9 @@ Rules and errors:
 
 ### Customer cancellation
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| PATCH | `/orders/:id/cancel` | auth (owner) | Cancel while status is `placed` or `confirmed` |
+| Method | Endpoint             | Access       | Purpose                                        |
+| ------ | -------------------- | ------------ | ---------------------------------------------- |
+| PATCH  | `/orders/:id/cancel` | auth (owner) | Cancel while status is `placed` or `confirmed` |
 
 Response `data: { order, refundPending }`. `refundPending` is `true` when the
 order was paid but the gateway refund call failed; the order is already
@@ -341,11 +359,11 @@ Rules:
 
 ### Admin order management
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/admin/orders` | admin | All orders with `?page`, `?limit` (max 50), `?status`, `?userId` |
-| GET | `/admin/orders/:id` | admin | Any order detail with customer summary |
-| PATCH | `/admin/orders/:id/status` | admin | Move an order to `confirmed`, `shipped`, `delivered` or `cancelled` |
+| Method | Endpoint                   | Access | Purpose                                                             |
+| ------ | -------------------------- | ------ | ------------------------------------------------------------------- |
+| GET    | `/admin/orders`            | admin  | All orders with `?page`, `?limit` (max 50), `?status`, `?userId`    |
+| GET    | `/admin/orders/:id`        | admin  | Any order detail with customer summary                              |
+| PATCH  | `/admin/orders/:id/status` | admin  | Move an order to `confirmed`, `shipped`, `delivered` or `cancelled` |
 
 List response `data: { orders, meta }`. Admin orders are `OrderDTO` plus
 `customer: { id, name, email }`. The service resolves customers with one
@@ -364,20 +382,20 @@ Status update body:
 
 Allowed transitions:
 
-| From | To |
-|---|---|
-| `placed` | `confirmed`, `cancelled` |
-| `confirmed` | `shipped`, `cancelled` |
-| `shipped` | `delivered` |
-| `delivered` | none |
-| `cancelled` | none |
+| From        | To                       |
+| ----------- | ------------------------ |
+| `placed`    | `confirmed`, `cancelled` |
+| `confirmed` | `shipped`, `cancelled`   |
+| `shipped`   | `delivered`              |
+| `delivered` | none                     |
+| `cancelled` | none                     |
 
 Rules:
 
 - `confirmed` requires `paymentStatus: paid`, otherwise `409`.
 - `shipped` requires both `carrier` and `trackingNumber`; sending only one is a
   validation `400`. The tracking object stores `{ carrier, trackingNumber,
-  updatedAt }`, and cancelling clears it.
+updatedAt }`, and cancelling clears it.
 - `note` is optional and limited to 300 characters; it is stored on the
   status-history entry.
 - Transitions are conditional updates guarded by the previous status, so a
@@ -391,8 +409,16 @@ Rules:
 {
   "statusHistory": [
     { "status": "placed", "at": "2026-11-09T01:35:00.000Z", "note": null },
-    { "status": "confirmed", "at": "2026-11-09T01:35:00.000Z", "note": "Payment received" },
-    { "status": "shipped", "at": "2026-11-09T01:41:00.000Z", "note": "Handed to carrier" }
+    {
+      "status": "confirmed",
+      "at": "2026-11-09T01:35:00.000Z",
+      "note": "Payment received"
+    },
+    {
+      "status": "shipped",
+      "at": "2026-11-09T01:41:00.000Z",
+      "note": "Handed to carrier"
+    }
   ],
   "tracking": {
     "carrier": "Delhivery",
@@ -407,13 +433,13 @@ created before `statusHistory` existed.
 
 ## Payments — Phase 8 (implemented)
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| POST | `/payments/start` | auth | Create or reuse a payment attempt for `{ orderId }` |
-| POST | `/payments/verify` | auth | Verify the gateway response and mark the order paid |
-| POST | `/payments/abandon` | auth | Mark the open attempt failed when checkout is dismissed |
-| POST | `/payments/mock/complete` | auth, mock mode only | `{ orderId, outcome: "success" \| "failure" }` |
-| POST | `/payments/webhook` | public + `x-razorpay-signature` | Raw-body gateway events |
+| Method | Endpoint                  | Access                          | Purpose                                                 |
+| ------ | ------------------------- | ------------------------------- | ------------------------------------------------------- |
+| POST   | `/payments/start`         | auth                            | Create or reuse a payment attempt for `{ orderId }`     |
+| POST   | `/payments/verify`        | auth                            | Verify the gateway response and mark the order paid     |
+| POST   | `/payments/abandon`       | auth                            | Mark the open attempt failed when checkout is dismissed |
+| POST   | `/payments/mock/complete` | auth, mock mode only            | `{ orderId, outcome: "success" \| "failure" }`          |
+| POST   | `/payments/webhook`       | public + `x-razorpay-signature` | Raw-body gateway events                                 |
 
 `start` returns `data: { payment }`. The payment DTO contains `id`, `orderId`,
 `provider` (`mock` \| `razorpay`), `providerOrderId`, `providerPaymentId`,
@@ -471,29 +497,46 @@ Webhook:
 - Response: `data: { handled: boolean }`.
 - Replays are safe: updates are guarded with `status: { $ne: "paid" }`.
 
-## Admin — Phase 10
+## Admin — Phase 10 (implemented)
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/admin/stats` | admin | Revenue, orders, top products, low stock |
-| GET | `/admin/customers` | admin | Customer list with order counts |
-| GET | `/admin/customers/:id` | admin | Customer detail |
-| PATCH | `/admin/customers/:id/status` | admin | Activate / deactivate customer |
+| Method | Endpoint                       | Access | Purpose                                                                   |
+| ------ | ------------------------------ | ------ | ------------------------------------------------------------------------- |
+| GET    | `/admin/stats`                 | admin  | Revenue, orders, top products, low stock                                  |
+| GET    | `/admin/customers`             | admin  | Customer list with order counts (`?search`, `?status`, `?page`, `?limit`) |
+| GET    | `/admin/customers/:id`         | admin  | Customer detail with recent orders                                        |
+| PATCH  | `/admin/customers/:id/status`  | admin  | Activate / deactivate customer                                            |
+| POST   | `/admin/uploads/product-image` | admin  | Upload a product image to Cloudinary                                      |
+
+`GET /admin/stats` response `data: { stats }` includes:
+`revenue { total, last30Days, today }`, `orders { total, pendingPayments, byStatus }`,
+`customers { total, active, newLast30Days }`, `products { total, lowStock, outOfStock }`,
+`coupons { total, active }`, `dailySales[]` (seven `{ date, revenue, orders }`
+UTC buckets), `topProducts[]` (`{ id, name, slug, unitsSold, revenue }`),
+`lowStockProducts[]`, and `recentOrders[]` with customer summaries. Revenue and
+top products count paid orders only and exclude cancelled orders.
+
+`PATCH /admin/customers/:id/status` body `{ isActive: boolean }`. Deactivation
+clears the stored refresh session; the next authenticated request with the old
+access token returns `401`.
+
+`POST /admin/uploads/product-image` is `multipart/form-data` with field `image`
+(JPEG, PNG or WebP, max 5 MB). Response `data: { image: { url, publicId } }`.
+Missing file or wrong type → `400`; Cloudinary not configured → `503`.
 
 ---
 
 ## Endpoint ownership
 
-| Phase | Endpoints added |
-|---|---|
-| 1 | `/health` |
-| 2 | `/auth/*`, `/admin/ping` |
-| 3 | `/categories/*`, `/products/*` |
-| 6 | `/cart/*`, `/wishlist/*` |
-| 7 | `/addresses/*`, `POST /orders/quote`, `POST /orders`, `GET /orders/*` |
-| 8 | `/payments/start`, `/payments/verify`, `/payments/abandon`, `/payments/mock/complete`, `/payments/webhook` |
-| 9 | `PATCH /orders/:id/cancel`, `GET /admin/orders`, `GET /admin/orders/:id`, `PATCH /admin/orders/:id/status` |
-| 10 | `/coupons/*`, `/admin/*` |
+| Phase | Endpoints added                                                                                            |
+| ----- | ---------------------------------------------------------------------------------------------------------- |
+| 1     | `/health`                                                                                                  |
+| 2     | `/auth/*`, `/admin/ping`                                                                                   |
+| 3     | `/categories/*`, `/products/*`                                                                             |
+| 6     | `/cart/*`, `/wishlist/*`                                                                                   |
+| 7     | `/addresses/*`, `POST /orders/quote`, `POST /orders`, `GET /orders/*`                                      |
+| 8     | `/payments/start`, `/payments/verify`, `/payments/abandon`, `/payments/mock/complete`, `/payments/webhook` |
+| 9     | `PATCH /orders/:id/cancel`, `GET /admin/orders`, `GET /admin/orders/:id`, `PATCH /admin/orders/:id/status` |
+| 10    | `/coupons/*`, `/admin/*`                                                                                   |
 
 Any endpoint added outside this document must be recorded here in the same
 commit that introduces it.

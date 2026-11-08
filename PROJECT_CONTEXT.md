@@ -6,9 +6,9 @@ For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-09
-**Current phase:** Phase 9 — Order Management (complete, awaiting review)
-**Latest work:** Order status transitions and history, customer cancellation with stock restore, Razorpay/mock refunds, admin order listing, filters and status updates, and the customer timeline/tracking UI
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9
+**Current phase:** Phase 10 — Admin Dashboard (complete, awaiting review)
+**Latest work:** Admin layout and analytics dashboard, coupon engine with checkout discounts, admin customer management, product/category management UI and Cloudinary-signed image uploads
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -80,74 +80,78 @@ ecommerce-platform/
 
 ## 4. Technology decisions
 
-| Area | Decision | Why |
-|---|---|---|
-| Language | TypeScript strict mode, no implicit `any` | Catch shape errors at compile time |
-| Money | Integer **paise** | Avoids floating point errors in totals/tax |
-| Auth | 15 min access token + 7 day refresh token in httpOnly cookie | XSS-safe refresh, revocable sessions |
-| Refresh storage | SHA-256 hash of the refresh token on the user document | A database leak does not expose usable tokens |
-| Refresh rotation | New token on every refresh; reuse of an old token clears the session | Detects stolen refresh tokens |
-| Passwords | bcryptjs, cost factor 12 | Slow hashing resists brute force |
-| Validation | Zod for env and request bodies | One schema source; infer TS types |
-| Response shape | `{ success, message, data, meta? }` | Predictable frontend handling |
-| Errors | `ApiError` + single global error middleware | Consistent status codes and payloads |
-| API prefix | `/api/v1` | Room for breaking changes later |
-| API framework | Express 5 | Native async error forwarding; no `asyncHandler` wrapper needed |
-| Module system | TypeScript `nodenext`, compiled to CommonJS | Modern resolution without ESM `.js` import friction |
-| IDs | Mongo ObjectId | Default; slugs used for public product/category URLs |
-| Deletes | Soft delete on products/users (`isActive`) | Orders keep valid references |
-| Order data | Price/name/address snapshots | Historical accuracy after edits |
-| Reviews | Compound unique index `(user, product)` | One review per customer per product |
-| Images | URL strings in Phase 3, Cloudinary in Phase 10 | Don't block product CRUD on a vendor |
-| Server state | TanStack Query | Caching, retries, loading states |
-| Client token storage | Access token in a module variable | Never readable by injected scripts; localStorage avoided |
-| Client refresh | 401 → one shared `/auth/refresh` call → retry once | Many parallel 401s cost one refresh |
-| Client session restore | Refresh cookie on app mount, deduplicated | StrictMode double effects cannot rotate twice |
-| Catalogue state | URL search params (`q`, `category`, `min`, `max`, `rating`, `inStock`, `sort`, `page`) | Filters are shareable, reload-safe and back-button friendly |
-| Password change | Verify current password, reject reuse, revoke refresh session, clear cookie | A changed password invalidates every existing session |
-| Login redirect notice | Guard forwards a notice code to `/login` | The re-login reason survives the auth redirect |
-| Styling | Tailwind CSS 4 via `@tailwindcss/vite` with `@theme` tokens | No config file; tokens generate utilities |
-| Visual design | Warm editorial palette (cream/paper, forest green, terracotta), Fraunces + Plus Jakarta Sans, lucide-react icons | A curated-store feel, not a default dashboard; all tokens live in `index.css` |
-| Client routing | React Router 7 `createBrowserRouter` | Data-router ready for loaders later |
-| Cart/wishlist | Persisted server-side | Cross-device consistency |
-| Cart pricing | `priceAtAdd` snapshot per line; totals computed on the server | Cart totals are trustworthy and historical prices survive catalogue edits |
-| Cart limits | 10 units per line; stock checked on add and update | Prevents overselling and accidental bulk orders |
-| Wishlist toggle | TanStack Query optimistic update with rollback | Instant heart feedback without waiting for the network |
-| Notifications | Lightweight toast context (3.5s) | Local feedback for cart and wishlist mutations without a dependency |
-| Checkout pricing | Server quote + server recompute on order; client sends no prices | Totals cannot be tampered with in the browser |
-| Tax | GST-inclusive, `round(subtotal × 18 / 118)` | Matches Indian retail display, stays in integer paise |
-| Shipping | Free from ₹999 (99,900 paise), otherwise ₹49 (4,900 paise) | One clear threshold measured after discount |
-| Address default | Exactly one default; first address auto-default; delete promotes oldest | Predictable checkout pre-selection without a second source of truth |
-| Stock on order | Conditional `$gte` decrement per line with rollback | Prevents overselling without MongoDB transactions |
-| Order history | Item and address snapshots | Editing a product or address never rewrites a past order |
-| Payments | Razorpay Orders REST via `fetch`, explicit `PAYMENT_MODE=mock` for local dev, HMAC verification | Real gateway code without an SDK dependency; tests run without credentials |
-| Payment record | One `payments` document per order (`orderId` unique), retries reuse it | Prevents double charges and gives one audit trail per order |
-| Webhook body | Mounted with `express.raw()` before `express.json()` | The signature is only valid over the exact bytes the gateway sent |
-| Payment activation | Only a valid signature changes the order to paid/confirmed | The browser is never trusted to declare a payment successful |
-| Order lifecycle | Server-owned `ALLOWED_TRANSITIONS` map with a `statusHistory[]` event log | One place decides what is legal next; the customer timeline is data, not client inference |
-| Cancellation | Conditional update guarded by `placed`/`confirmed`; stock restored only by the winning request | Prevents double stock restoration without transactions |
-| Refunds | Atomic `paid → refund_pending → refunded` claim, provider refund via REST, reset to `paid` on failure | One refund per payment, retryable after a gateway failure, safe under concurrent cancels |
-| Admin order queries | Pagination plus `status`/`userId` filters; customers resolved with one batched lookup | Operational listing without N+1 queries |
-| Testing | Manual + Postman per phase; formal suite in Phase 11 | Learn behavior before automating |
+| Area                   | Decision                                                                                                         | Why                                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Language               | TypeScript strict mode, no implicit `any`                                                                        | Catch shape errors at compile time                                                        |
+| Money                  | Integer **paise**                                                                                                | Avoids floating point errors in totals/tax                                                |
+| Auth                   | 15 min access token + 7 day refresh token in httpOnly cookie                                                     | XSS-safe refresh, revocable sessions                                                      |
+| Refresh storage        | SHA-256 hash of the refresh token on the user document                                                           | A database leak does not expose usable tokens                                             |
+| Refresh rotation       | New token on every refresh; reuse of an old token clears the session                                             | Detects stolen refresh tokens                                                             |
+| Passwords              | bcryptjs, cost factor 12                                                                                         | Slow hashing resists brute force                                                          |
+| Validation             | Zod for env and request bodies                                                                                   | One schema source; infer TS types                                                         |
+| Response shape         | `{ success, message, data, meta? }`                                                                              | Predictable frontend handling                                                             |
+| Errors                 | `ApiError` + single global error middleware                                                                      | Consistent status codes and payloads                                                      |
+| API prefix             | `/api/v1`                                                                                                        | Room for breaking changes later                                                           |
+| API framework          | Express 5                                                                                                        | Native async error forwarding; no `asyncHandler` wrapper needed                           |
+| Module system          | TypeScript `nodenext`, compiled to CommonJS                                                                      | Modern resolution without ESM `.js` import friction                                       |
+| IDs                    | Mongo ObjectId                                                                                                   | Default; slugs used for public product/category URLs                                      |
+| Deletes                | Soft delete on products/users (`isActive`)                                                                       | Orders keep valid references                                                              |
+| Order data             | Price/name/address snapshots                                                                                     | Historical accuracy after edits                                                           |
+| Reviews                | Compound unique index `(user, product)`                                                                          | One review per customer per product                                                       |
+| Images                 | URL list plus optional signed Cloudinary upload                                                                  | Catalogue writes work without a vendor account                                            |
+| Server state           | TanStack Query                                                                                                   | Caching, retries, loading states                                                          |
+| Client token storage   | Access token in a module variable                                                                                | Never readable by injected scripts; localStorage avoided                                  |
+| Client refresh         | 401 → one shared `/auth/refresh` call → retry once                                                               | Many parallel 401s cost one refresh                                                       |
+| Client session restore | Refresh cookie on app mount, deduplicated                                                                        | StrictMode double effects cannot rotate twice                                             |
+| Catalogue state        | URL search params (`q`, `category`, `min`, `max`, `rating`, `inStock`, `sort`, `page`)                           | Filters are shareable, reload-safe and back-button friendly                               |
+| Password change        | Verify current password, reject reuse, revoke refresh session, clear cookie                                      | A changed password invalidates every existing session                                     |
+| Login redirect notice  | Guard forwards a notice code to `/login`                                                                         | The re-login reason survives the auth redirect                                            |
+| Styling                | Tailwind CSS 4 via `@tailwindcss/vite` with `@theme` tokens                                                      | No config file; tokens generate utilities                                                 |
+| Visual design          | Warm editorial palette (cream/paper, forest green, terracotta), Fraunces + Plus Jakarta Sans, lucide-react icons | A curated-store feel, not a default dashboard; all tokens live in `index.css`             |
+| Client routing         | React Router 7 `createBrowserRouter`                                                                             | Data-router ready for loaders later                                                       |
+| Cart/wishlist          | Persisted server-side                                                                                            | Cross-device consistency                                                                  |
+| Cart pricing           | `priceAtAdd` snapshot per line; totals computed on the server                                                    | Cart totals are trustworthy and historical prices survive catalogue edits                 |
+| Cart limits            | 10 units per line; stock checked on add and update                                                               | Prevents overselling and accidental bulk orders                                           |
+| Wishlist toggle        | TanStack Query optimistic update with rollback                                                                   | Instant heart feedback without waiting for the network                                    |
+| Notifications          | Lightweight toast context (3.5s)                                                                                 | Local feedback for cart and wishlist mutations without a dependency                       |
+| Checkout pricing       | Server quote + server recompute on order; client sends no prices                                                 | Totals cannot be tampered with in the browser                                             |
+| Tax                    | GST-inclusive, `round(subtotal × 18 / 118)`                                                                      | Matches Indian retail display, stays in integer paise                                     |
+| Shipping               | Free from ₹999 (99,900 paise), otherwise ₹49 (4,900 paise)                                                       | One clear threshold measured after discount                                               |
+| Address default        | Exactly one default; first address auto-default; delete promotes oldest                                          | Predictable checkout pre-selection without a second source of truth                       |
+| Stock on order         | Conditional `$gte` decrement per line with rollback                                                              | Prevents overselling without MongoDB transactions                                         |
+| Order history          | Item and address snapshots                                                                                       | Editing a product or address never rewrites a past order                                  |
+| Payments               | Razorpay Orders REST via `fetch`, explicit `PAYMENT_MODE=mock` for local dev, HMAC verification                  | Real gateway code without an SDK dependency; tests run without credentials                |
+| Payment record         | One `payments` document per order (`orderId` unique), retries reuse it                                           | Prevents double charges and gives one audit trail per order                               |
+| Webhook body           | Mounted with `express.raw()` before `express.json()`                                                             | The signature is only valid over the exact bytes the gateway sent                         |
+| Payment activation     | Only a valid signature changes the order to paid/confirmed                                                       | The browser is never trusted to declare a payment successful                              |
+| Order lifecycle        | Server-owned `ALLOWED_TRANSITIONS` map with a `statusHistory[]` event log                                        | One place decides what is legal next; the customer timeline is data, not client inference |
+| Cancellation           | Conditional update guarded by `placed`/`confirmed`; stock restored only by the winning request                   | Prevents double stock restoration without transactions                                    |
+| Refunds                | Atomic `paid → refund_pending → refunded` claim, provider refund via REST, reset to `paid` on failure            | One refund per payment, retryable after a gateway failure, safe under concurrent cancels  |
+| Admin order queries    | Pagination plus `status`/`userId` filters; customers resolved with one batched lookup                            | Operational listing without N+1 queries                                                   |
+| Coupons                | Server-validated against cart subtotal; usage claimed with a conditional `$inc` and released on failure/cancel   | Prevent over-redemption without transactions; the client never decides a discount         |
+| Admin analytics        | MongoDB aggregations over paid orders, UTC day buckets, batched customer lookups                                 | One small set of queries for the dashboard instead of per-card fetches                    |
+| Customer deactivation  | `isActive` is checked on every authenticated request and the refresh session is cleared                          | A disabled account loses access immediately, not when its access token expires            |
+| Uploads                | 5 MB memory upload, JPEG/PNG/WebP only, server-signed Cloudinary request                                         | The API secret stays on the server; local dev works without a vendor account              |
+| Testing                | Manual + Postman per phase; formal suite in Phase 11                                                             | Learn behavior before automating                                                          |
 
 ## 5. Database collections
 
-| Collection | Key fields | Relationships / indexes |
-|---|---|---|
-| `users` | name, email, passwordHash, role, isActive | email unique; 1–1 cart; 1–N addresses, orders, reviews |
-| `categories` | name, slug, parentId, isActive | slug unique; self-referencing tree |
-| `products` | name, slug, description, price, categoryId, images, stock, ratingAvg, ratingCount | slug unique; index on categoryId, price, createdAt; text index on name/description |
-| `carts` | userId, items[{ productId, quantity, priceAtAdd }] | userId unique |
-| `wishlists` | userId, productIds[] | userId unique |
-| `addresses` | userId, label, line1, line2, city, state, pincode, phone, isDefault | index on userId |
-| `orders` | userId, items[] snapshot, address snapshot, subtotal, tax, shipping, discount, total, status, paymentStatus, statusHistory[] {status, at, note}, tracking {carrier, trackingNumber, updatedAt} | index on userId + createdAt; index on status + createdAt |
-| `payments` | orderId, provider, providerOrderId, providerPaymentId, amount, status, refundId, refundedAt, rawPayload | orderId unique |
-| `reviews` | userId, productId, rating, comment | unique (userId, productId) |
-| `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
+| Collection   | Key fields                                                                                                                                                                                     | Relationships / indexes                                                            |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `users`      | name, email, passwordHash, role, isActive                                                                                                                                                      | email unique; 1–1 cart; 1–N addresses, orders, reviews                             |
+| `categories` | name, slug, parentId, isActive                                                                                                                                                                 | slug unique; self-referencing tree                                                 |
+| `products`   | name, slug, description, price, categoryId, images, stock, ratingAvg, ratingCount                                                                                                              | slug unique; index on categoryId, price, createdAt; text index on name/description |
+| `carts`      | userId, items[{ productId, quantity, priceAtAdd }]                                                                                                                                             | userId unique                                                                      |
+| `wishlists`  | userId, productIds[]                                                                                                                                                                           | userId unique                                                                      |
+| `addresses`  | userId, label, line1, line2, city, state, pincode, phone, isDefault                                                                                                                            | index on userId                                                                    |
+| `orders`     | userId, items[] snapshot, address snapshot, subtotal, tax, shipping, discount, total, status, paymentStatus, statusHistory[] {status, at, note}, tracking {carrier, trackingNumber, updatedAt} | index on userId + createdAt; index on status + createdAt                           |
+| `payments`   | orderId, provider, providerOrderId, providerPaymentId, amount, status, refundId, refundedAt, rawPayload                                                                                        | orderId unique                                                                     |
+| `reviews`    | userId, productId, rating, comment                                                                                                                                                             | unique (userId, productId)                                                         |
+| `coupons`    | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive                                                                                                    | code unique                                                                        |
 
 **Implemented:** `users`, `categories`, `products`, `carts`, `wishlists`,
-`addresses`, `orders`, `payments`. The remaining collections are planned for
-Phase 10.
+`addresses`, `orders`, `payments`, `coupons`. Reviews remain planned for
+Phase 11.
 
 ## 6. API surface
 
@@ -168,35 +172,42 @@ Marked complete here as each phase lands.
 `POST /payments/verify`, `POST /payments/abandon`, `POST /payments/mock/complete`,
 `POST /payments/webhook` (Phase 8); `PATCH /orders/:id/cancel`,
 `GET /admin/orders`, `GET /admin/orders/:id`, `PATCH /admin/orders/:id/status`
-(Phase 9).
+(Phase 9); `POST /coupons/validate`, `GET /coupons`, `POST /coupons`,
+`PATCH /coupons/:id`, `DELETE /coupons/:id`, `GET /admin/stats`,
+`GET /admin/customers`, `GET /admin/customers/:id`,
+`PATCH /admin/customers/:id/status`, `POST /admin/uploads/product-image`
+(Phase 10).
 
 **Client routes:** `/` (public), `/products`, `/products/:slug`,
 `/categories/:slug`, `/login`, `/register`, `/cart`, `/wishlist`, `/addresses`,
 `/checkout`, `/orders`, `/orders/:id` and `/account` (signed in), `/admin`,
-`/admin/orders` and `/admin/orders/:id` (admin), `*` (404). The order detail
+`/admin/orders`, `/admin/orders/:id`, `/admin/products`, `/admin/categories`,
+`/admin/customers` and `/admin/coupons` (admin), `*` (404). The order detail
 page owns the payment panel, timeline, tracking card and cancellation. Catalogue
 filters are URL-driven (`q`, `category`, `min`, `max`, `rating`, `inStock`,
-`sort`, `page`); admin order filters use `?status` and `?page`.
+`sort`, `page`); admin order filters use `?status` and `?page`; coupon and
+customer lists use `?search`, `?active`/`?status`, `?page` and `?limit`.
 
 ## 7. Environment
 
-| Item | Value |
-|---|---|
-| OS | Windows 10 x64, Git Bash |
-| Node | v22.14.0 via nvm4w (`.nvmrc`) |
-| npm | 10.9.2 |
-| MongoDB | 8.2 local, `mongodb://127.0.0.1:27017/ecommerce_dev` |
-| API (dev) | http://localhost:5000/api/v1 |
-| Client (dev) | http://localhost:5173, `VITE_API_URL` (default `http://localhost:5000/api/v1`) |
-| CORS | `CORS_ORIGIN=http://localhost:5173`, credentials enabled |
-| Auth env | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12` |
-| Payment env | `PAYMENT_MODE=mock` locally; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; production requires `razorpay` mode and a key id |
-| Admin seed | `npm run seed:admin -- <email> <password> [name]` |
-| Catalog seed | `npm run seed:catalog` (idempotent) |
-| VS Code | 1.139.1 |
-| GitHub CLI | 2.103.3, authenticated as `Owais101074` (keyring) |
-| GitHub repo | `ecommerce-platform`, public, default branch `main` |
-| Docker | not installed (Phase 12) |
+| Item         | Value                                                                                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OS           | Windows 10 x64, Git Bash                                                                                                                                    |
+| Node         | v22.14.0 via nvm4w (`.nvmrc`)                                                                                                                               |
+| npm          | 10.9.2                                                                                                                                                      |
+| MongoDB      | 8.2 local, `mongodb://127.0.0.1:27017/ecommerce_dev`                                                                                                        |
+| API (dev)    | http://localhost:5000/api/v1                                                                                                                                |
+| Client (dev) | http://localhost:5173, `VITE_API_URL` (default `http://localhost:5000/api/v1`)                                                                              |
+| CORS         | `CORS_ORIGIN=http://localhost:5173`, credentials enabled                                                                                                    |
+| Auth env     | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12`        |
+| Payment env  | `PAYMENT_MODE=mock` locally; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; production requires `razorpay` mode and a key id          |
+| Upload env   | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER` (default `ecommerce-platform`); uploads return `503` when unset |
+| Admin seed   | `npm run seed:admin -- <email> <password> [name]`                                                                                                           |
+| Catalog seed | `npm run seed:catalog` (idempotent)                                                                                                                         |
+| VS Code      | 1.139.1                                                                                                                                                     |
+| GitHub CLI   | 2.103.3, authenticated as `Owais101074` (keyring)                                                                                                           |
+| GitHub repo  | `ecommerce-platform`, public, default branch `main`                                                                                                         |
+| Docker       | not installed (Phase 12)                                                                                                                                    |
 
 ## 8. Installed dependencies
 
@@ -447,29 +458,58 @@ eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@type
 - [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
 - [ ] Close Phase 9 review
 
+### Phase 10 — Admin Dashboard
+
+- [x] `coupons` collection with unique uppercase codes, percentage/fixed values
+      in paise, minimum order, max discount, start/expiry window, usage limit,
+      usage counter and active flag
+- [x] `POST /coupons/validate` prices a code against the cart; admin list,
+      create, update and soft-deactive endpoints with duplicate `409`s
+- [x] Checkout quote and `POST /orders` accept `couponCode`; usage claimed with a
+      conditional `$inc`, released on failed placement and cancellation
+- [x] `GET /admin/stats` with paid revenue (total/30 days/today), status counts,
+      customer/product counters, seven-day sales, top products, low stock and
+      recent orders
+- [x] Admin customer list/detail with order count and paid lifetime spend;
+      `PATCH /admin/customers/:id/status` deactivates and revokes the session
+- [x] `POST /admin/uploads/product-image` with 5 MB memory upload,
+      JPEG/PNG/WebP validation, server-signed Cloudinary request and `503` when
+      unconfigured
+- [x] `AdminLayout` plus dashboard, products, categories, customers and coupons
+      pages; catalogue writes reuse the existing admin CRUD
+- [x] Checkout coupon card with apply, remove, live quote refresh and error
+      recovery
+- [x] Server live checks (44): coupon lifecycle, discount math, usage
+      claim/release, expiry/window/limit/min-order rejections, admin statistics,
+      customer deactivation, catalogue writes and upload validation
+- [x] Browser checks: dashboard data, coupon form/toggle, customer detail,
+      checkout apply/remove totals, no React console errors
+- [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
+- [ ] Close Phase 10 review
+
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
 twice.
 
 ## 10. Pending tasks
 
-| Phase | Task | Status |
-|---|---|---|
-| 0 | GitHub repo + first push | done |
-| 1 | Express + TS scaffold, env config, DB connect, error middleware, `/health` | done |
-| 2 | Auth module, JWT, roles, protected routes | done |
-| 3 | Category + product CRUD, search/filter/sort/pagination, seed script | done |
-| 4 | Vite + React + Tailwind + Router + Query scaffold | done |
-| 4 | Storefront UI refresh (design system, shell, auth layout, pages) | done |
-| 5 | Catalogue listing, product detail, department pages, profile + password UI | done |
-| 6 | Cart + wishlist | done |
-| 7 | Addresses, checkout quote, orders, order history/detail | done |
-| 8 | Razorpay integration, signature verification, webhook, failure/abandon | done |
-| 9 | Order lifecycle + cancellation/refund | done |
-| 10 | Admin dashboard + Cloudinary | not started |
-| 11 | Tests + security hardening | not started |
-| 12 | Redis, jobs, email, logging, Docker | not started |
-| 13 | Deployment + GitHub Actions | not started |
+| Phase | Task                                                                       | Status      |
+| ----- | -------------------------------------------------------------------------- | ----------- |
+| 0     | GitHub repo + first push                                                   | done        |
+| 1     | Express + TS scaffold, env config, DB connect, error middleware, `/health` | done        |
+| 2     | Auth module, JWT, roles, protected routes                                  | done        |
+| 3     | Category + product CRUD, search/filter/sort/pagination, seed script        | done        |
+| 4     | Vite + React + Tailwind + Router + Query scaffold                          | done        |
+| 4     | Storefront UI refresh (design system, shell, auth layout, pages)           | done        |
+| 5     | Catalogue listing, product detail, department pages, profile + password UI | done        |
+| 6     | Cart + wishlist                                                            | done        |
+| 7     | Addresses, checkout quote, orders, order history/detail                    | done        |
+| 8     | Razorpay integration, signature verification, webhook, failure/abandon     | done        |
+| 9     | Order lifecycle + cancellation/refund                                      | done        |
+| 10    | Admin dashboard, coupons and Cloudinary uploads                            | done        |
+| 11    | Tests + security hardening                                                 | not started |
+| 12    | Redis, jobs, email, logging, Docker                                        | not started |
+| 13    | Deployment + GitHub Actions                                                | not started |
 
 ## 11. Known bugs
 
