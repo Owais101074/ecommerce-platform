@@ -38,12 +38,13 @@ export function useOrder(orderId: string) {
   });
 }
 
-export function useCheckoutQuote(enabled: boolean) {
+export function useCheckoutQuote(enabled: boolean, couponCode?: string | null) {
   const { isAuthenticated } = useAuth();
+  const normalizedCode = couponCode?.trim().toUpperCase() || null;
 
   return useQuery({
-    queryKey: ['checkout-quote'],
-    queryFn: () => fetchCheckoutQuote(),
+    queryKey: ['checkout-quote', normalizedCode ?? ''],
+    queryFn: () => fetchCheckoutQuote(normalizedCode ?? undefined),
     enabled: isAuthenticated && enabled,
     retry: false,
   });

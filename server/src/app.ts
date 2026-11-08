@@ -10,6 +10,7 @@ import adminRoutes from './modules/admin/admin.routes';
 import authRoutes from './modules/auth/auth.routes';
 import cartRoutes from './modules/cart/cart.routes';
 import categoryRoutes from './modules/categories/category.routes';
+import couponRoutes from './modules/coupons/coupon.routes';
 import healthRoutes from './modules/health/health.routes';
 import orderRoutes from './modules/orders/order.routes';
 import paymentRoutes from './modules/payments/payment.routes';
@@ -51,6 +52,7 @@ app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/addresses', addressRoutes);
 app.use('/api/v1/orders', orderRoutes);
+app.use('/api/v1/coupons', couponRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/admin', adminRoutes);
 

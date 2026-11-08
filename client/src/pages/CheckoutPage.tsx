@@ -1,6 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Lock, MapPin, Plus, ShoppingBag, Truck } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Lock,
+  MapPin,
+  Plus,
+  ShoppingBag,
+  TicketPercent,
+  Truck,
+  X,
+} from 'lucide-react';
 import { getErrorMessage } from '@/api/errors';
 import { AddressForm } from '@/components/address/AddressForm';
 import { Container } from '@/components/layout/Container';
@@ -12,6 +22,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAddresses, useCreateAddress } from '@/hooks/useAddresses';
 import { useCart } from '@/hooks/useCart';
+import { useValidateCoupon } from '@/hooks/useCoupons';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useCheckoutQuote, usePlaceOrder } from '@/hooks/useOrders';
 import { formatPrice } from '@/lib/format';
@@ -40,14 +51,17 @@ export function CheckoutPage() {
   const addressesQuery = useAddresses();
   const createAddress = useCreateAddress();
   const placeOrder = usePlaceOrder();
+  const validateCoupon = useValidateCoupon();
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
 
   const cart = cartQuery.data;
   const addresses = useMemo(() => addressesQuery.data ?? [], [addressesQuery.data]);
   const hasItems = Boolean(cart && cart.items.length > 0);
-  const quoteQuery = useCheckoutQuote(hasItems);
+  const quoteQuery = useCheckoutQuote(hasItems, appliedCode);
 
   useEffect(() => {
     if (addresses.length === 0) {
@@ -79,8 +93,35 @@ export function CheckoutPage() {
       return;
     }
 
-    const order = await placeOrder.mutateAsync({ addressId: selectedAddressId });
+    const order = await placeOrder.mutateAsync({
+      addressId: selectedAddressId,
+      couponCode: appliedCode ?? undefined,
+    });
     navigate(`/orders/${order.id}`, { state: { justPlaced: true } });
+  }
+
+  async function handleApplyCoupon(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+
+    const code = couponInput.trim();
+
+    if (!code) {
+      return;
+    }
+
+    try {
+      const coupon = await validateCoupon.mutateAsync(code);
+      setAppliedCode(coupon.code);
+      setCouponInput(coupon.code);
+    } catch {
+      // The mutation hook already shows the error toast.
+    }
+  }
+
+  function handleRemoveCoupon(): void {
+    setAppliedCode(null);
+    setCouponInput('');
+    validateCoupon.reset();
   }
 
   if (cartQuery.isPending || addressesQuery.isPending) {
@@ -283,7 +324,19 @@ export function CheckoutPage() {
             {quoteQuery.isError ? (
               <div className="mt-5">
                 <Alert variant="error" title="Totals unavailable">
-                  {getErrorMessage(quoteQuery.error)}
+                  <div className="space-y-2">
+                    <p>{getErrorMessage(quoteQuery.error)}</p>
+                    {appliedCode && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                        Remove coupon {appliedCode}
+                      </button>
+                    )}
+                  </div>
                 </Alert>
               </div>
             ) : quote ? (
@@ -296,6 +349,57 @@ export function CheckoutPage() {
                     </Alert>
                   </div>
                 )}
+
+                <div className="mt-5 rounded-2xl border border-ink-200 bg-ink-50/60 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] text-ink-600 uppercase">
+                      <TicketPercent className="h-3.5 w-3.5" aria-hidden="true" />
+                      Coupon
+                    </p>
+                    {appliedCode && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-ink-600 transition hover:text-red-600"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  {appliedCode ? (
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <span className="font-mono text-sm font-semibold text-ink-900">
+                        {appliedCode}
+                      </span>
+                      {validateCoupon.data?.code === appliedCode && (
+                        <span className="text-xs font-semibold text-brand-700">
+                          Saved {formatPrice(validateCoupon.data.discount)}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <form onSubmit={handleApplyCoupon} className="mt-3 flex gap-2">
+                      <input
+                        value={couponInput}
+                        onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                        placeholder="Enter coupon code"
+                        aria-label="Coupon code"
+                        className="h-10 min-w-0 flex-1 rounded-full border border-ink-200 bg-paper px-4 font-mono text-sm text-ink-900 transition placeholder:font-sans placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/12 focus:outline-none"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        variant="secondary"
+                        loading={validateCoupon.isPending}
+                        disabled={!couponInput.trim()}
+                      >
+                        Apply
+                      </Button>
+                    </form>
+                  )}
+                </div>
 
                 <dl className="mt-6 space-y-3 text-sm">
                   <div className="flex items-center justify-between gap-4">

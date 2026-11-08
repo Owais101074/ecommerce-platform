@@ -35,8 +35,3 @@ export async function fetchCategoryBySlug(slug: string): Promise<Category> {
   const { data } = await http.get<ApiSuccess<{ category: Category }>>(`/categories/${slug}`);
   return data.data.category;
 }
-
-export async function fetchAdminPing(): Promise<string> {
-  const { data } = await http.get<ApiSuccess<{ user: unknown }>>('/admin/ping');
-  return data.message;
-}

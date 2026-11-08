@@ -25,6 +25,10 @@ const envSchema = z
       .string()
       .trim()
       .min(16, 'RAZORPAY_WEBHOOK_SECRET must be at least 16 characters'),
+    CLOUDINARY_CLOUD_NAME: z.string().trim().default(''),
+    CLOUDINARY_API_KEY: z.string().trim().default(''),
+    CLOUDINARY_API_SECRET: z.string().trim().default(''),
+    CLOUDINARY_FOLDER: z.string().trim().default('ecommerce-platform'),
   })
   .refine((data) => data.JWT_ACCESS_SECRET !== data.JWT_REFRESH_SECRET, {
     message: 'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different',

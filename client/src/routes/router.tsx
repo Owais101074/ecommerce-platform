@@ -1,10 +1,15 @@
 import { createBrowserRouter } from 'react-router-dom';
+import { AdminLayout } from '@/components/layout/AdminLayout';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AccountPage } from '@/pages/AccountPage';
 import { AddressesPage } from '@/pages/AddressesPage';
+import { AdminCategoriesPage } from '@/pages/AdminCategoriesPage';
+import { AdminCouponsPage } from '@/pages/AdminCouponsPage';
+import { AdminCustomersPage } from '@/pages/AdminCustomersPage';
+import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { AdminOrderDetailPage } from '@/pages/AdminOrderDetailPage';
 import { AdminOrdersPage } from '@/pages/AdminOrdersPage';
-import { AdminPage } from '@/pages/AdminPage';
+import { AdminProductsPage } from '@/pages/AdminProductsPage';
 import { CartPage } from '@/pages/CartPage';
 import { CheckoutPage } from '@/pages/CheckoutPage';
 import { CategoryPage } from '@/pages/CategoryPage';
@@ -101,25 +106,39 @@ export const router = createBrowserRouter([
         path: 'admin',
         element: (
           <RequireAdmin>
-            <AdminPage />
+            <AdminLayout />
           </RequireAdmin>
         ),
-      },
-      {
-        path: 'admin/orders',
-        element: (
-          <RequireAdmin>
-            <AdminOrdersPage />
-          </RequireAdmin>
-        ),
-      },
-      {
-        path: 'admin/orders/:id',
-        element: (
-          <RequireAdmin>
-            <AdminOrderDetailPage />
-          </RequireAdmin>
-        ),
+        children: [
+          {
+            index: true,
+            element: <AdminDashboardPage />,
+          },
+          {
+            path: 'orders',
+            element: <AdminOrdersPage />,
+          },
+          {
+            path: 'orders/:id',
+            element: <AdminOrderDetailPage />,
+          },
+          {
+            path: 'products',
+            element: <AdminProductsPage />,
+          },
+          {
+            path: 'categories',
+            element: <AdminCategoriesPage />,
+          },
+          {
+            path: 'customers',
+            element: <AdminCustomersPage />,
+          },
+          {
+            path: 'coupons',
+            element: <AdminCouponsPage />,
+          },
+        ],
       },
       {
         path: '*',

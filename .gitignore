@@ -20,8 +20,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Local uploads
-uploads/
+# Local uploads (disk storage output only; source modules live in server/src/modules/)
+/server/uploads/
 
 # OS files
 .DS_Store

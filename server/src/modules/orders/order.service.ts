@@ -4,9 +4,9 @@ import { Address } from '../addresses/address.model';
 import type { AddressDocument } from '../addresses/address.model';
 import { User } from '../auth/auth.model';
 import * as cartService from '../cart/cart.service';
+import { claimCoupon, releaseCoupon, resolveCoupon } from '../coupons/coupon.service';
 import * as paymentService from '../payments/payment.service';
 import { Product } from '../products/product.model';
-import { resolveCoupon } from './coupon.service';
 import { calculateOrderPricing } from './order.pricing';
 import { toAdminOrderDTO, toOrderDTO } from './order.mapper';
 import { Order } from './order.model';
@@ -105,6 +105,10 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
   const coupon = await resolveCoupon(input.couponCode, cart.subtotal);
   const pricing = calculateOrderPricing(cart.subtotal, coupon.discount);
 
+  if (coupon.code) {
+    await claimCoupon(coupon.code);
+  }
+
   const decremented: { productId: string; quantity: number }[] = [];
   let order: OrderDocument;
 
@@ -151,6 +155,10 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
         Product.updateOne({ _id: entry.productId }, { $inc: { stock: entry.quantity } }),
       ),
     );
+
+    if (coupon.code) {
+      await releaseCoupon(coupon.code);
+    }
 
     throw error;
   }
@@ -228,6 +236,11 @@ async function cancelOrderDocument(
     } else {
       cancelled = changed;
       await restoreStock(cancelled.items);
+
+      // A cancelled order should not keep burning a limited coupon run.
+      if (cancelled.couponCode) {
+        await releaseCoupon(cancelled.couponCode);
+      }
     }
   }
 
