@@ -1,10 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getErrorMessage } from '@/api/errors';
-import { fetchCheckoutQuote, fetchOrder, fetchOrders, placeOrderRequest } from '@/api/order.api';
+import {
+  cancelOrderRequest,
+  fetchCheckoutQuote,
+  fetchOrder,
+  fetchOrders,
+  placeOrderRequest,
+} from '@/api/order.api';
 import { useToast } from '@/components/ui/toast-context';
 import { useAuth } from '@/features/auth/useAuth';
 import { cartQueryKey } from '@/hooks/useCart';
-import type { Order } from '@/types/order';
+import type { CancelOrderResult, Order } from '@/types/order';
 
 export const orderQueryKeys = {
   lists: ['orders', 'list'] as const,
@@ -61,6 +67,29 @@ export function usePlaceOrder() {
       void queryClient.invalidateQueries({ queryKey: ['products'] });
       void queryClient.invalidateQueries({ queryKey: ['product'] });
       showToast(`Order ${order.orderNumber} placed`);
+    },
+    onError: (error) => {
+      showToast(getErrorMessage(error), 'error');
+    },
+  });
+}
+
+export function useCancelOrder() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (orderId: string) => cancelOrderRequest(orderId),
+    onSuccess: (result: CancelOrderResult) => {
+      queryClient.setQueryData(orderQueryKeys.detail(result.order.id), result.order);
+      void queryClient.invalidateQueries({ queryKey: orderQueryKeys.lists });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['product'] });
+      showToast(
+        result.refundPending ? 'Order cancelled. The refund is pending.' : 'Order cancelled',
+        result.refundPending ? 'info' : 'success',
+      );
     },
     onError: (error) => {
       showToast(getErrorMessage(error), 'error');

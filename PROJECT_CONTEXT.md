@@ -6,9 +6,9 @@ For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-09
-**Current phase:** Phase 8 — Payment Integration (complete, awaiting review)
-**Latest work:** Razorpay/mock payment creation, HMAC verification, signed webhook, failure/abandon handling and the order-page payment panel
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8
+**Current phase:** Phase 9 — Order Management (complete, awaiting review)
+**Latest work:** Order status transitions and history, customer cancellation with stock restore, Razorpay/mock refunds, admin order listing, filters and status updates, and the customer timeline/tracking UI
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -124,6 +124,10 @@ ecommerce-platform/
 | Payment record | One `payments` document per order (`orderId` unique), retries reuse it | Prevents double charges and gives one audit trail per order |
 | Webhook body | Mounted with `express.raw()` before `express.json()` | The signature is only valid over the exact bytes the gateway sent |
 | Payment activation | Only a valid signature changes the order to paid/confirmed | The browser is never trusted to declare a payment successful |
+| Order lifecycle | Server-owned `ALLOWED_TRANSITIONS` map with a `statusHistory[]` event log | One place decides what is legal next; the customer timeline is data, not client inference |
+| Cancellation | Conditional update guarded by `placed`/`confirmed`; stock restored only by the winning request | Prevents double stock restoration without transactions |
+| Refunds | Atomic `paid → refund_pending → refunded` claim, provider refund via REST, reset to `paid` on failure | One refund per payment, retryable after a gateway failure, safe under concurrent cancels |
+| Admin order queries | Pagination plus `status`/`userId` filters; customers resolved with one batched lookup | Operational listing without N+1 queries |
 | Testing | Manual + Postman per phase; formal suite in Phase 11 | Learn behavior before automating |
 
 ## 5. Database collections
@@ -136,14 +140,14 @@ ecommerce-platform/
 | `carts` | userId, items[{ productId, quantity, priceAtAdd }] | userId unique |
 | `wishlists` | userId, productIds[] | userId unique |
 | `addresses` | userId, label, line1, line2, city, state, pincode, phone, isDefault | index on userId |
-| `orders` | userId, items[] snapshot, address snapshot, subtotal, tax, shipping, discount, total, status, paymentStatus | index on userId + createdAt |
-| `payments` | orderId, provider, providerOrderId, providerPaymentId, amount, status, rawPayload | orderId unique |
+| `orders` | userId, items[] snapshot, address snapshot, subtotal, tax, shipping, discount, total, status, paymentStatus, statusHistory[] {status, at, note}, tracking {carrier, trackingNumber, updatedAt} | index on userId + createdAt; index on status + createdAt |
+| `payments` | orderId, provider, providerOrderId, providerPaymentId, amount, status, refundId, refundedAt, rawPayload | orderId unique |
 | `reviews` | userId, productId, rating, comment | unique (userId, productId) |
 | `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
 
 **Implemented:** `users`, `categories`, `products`, `carts`, `wishlists`,
 `addresses`, `orders`, `payments`. The remaining collections are planned for
-Phases 9–10.
+Phase 10.
 
 ## 6. API surface
 
@@ -162,14 +166,17 @@ Marked complete here as each phase lands.
 `PATCH /addresses/:id/default`, `DELETE /addresses/:id`, `POST /orders/quote`,
 `POST /orders`, `GET /orders`, `GET /orders/:id` (Phase 7); `POST /payments/start`,
 `POST /payments/verify`, `POST /payments/abandon`, `POST /payments/mock/complete`,
-`POST /payments/webhook` (Phase 8).
+`POST /payments/webhook` (Phase 8); `PATCH /orders/:id/cancel`,
+`GET /admin/orders`, `GET /admin/orders/:id`, `PATCH /admin/orders/:id/status`
+(Phase 9).
 
 **Client routes:** `/` (public), `/products`, `/products/:slug`,
 `/categories/:slug`, `/login`, `/register`, `/cart`, `/wishlist`, `/addresses`,
-`/checkout`, `/orders`, `/orders/:id` and `/account` (signed in), `/admin`
-(admin), `*` (404). The order detail page owns the payment panel. Catalogue
+`/checkout`, `/orders`, `/orders/:id` and `/account` (signed in), `/admin`,
+`/admin/orders` and `/admin/orders/:id` (admin), `*` (404). The order detail
+page owns the payment panel, timeline, tracking card and cancellation. Catalogue
 filters are URL-driven (`q`, `category`, `min`, `max`, `rating`, `inStock`,
-`sort`, `page`).
+`sort`, `page`); admin order filters use `?status` and `?page`.
 
 ## 7. Environment
 
@@ -411,7 +418,34 @@ eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@type
 - [x] Browser checks: pay via mock success, paid/confirmed UI, failed + retry,
       cancelled attempt, no React console errors
 - [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
-- [ ] Close Phase 8 review
+- [x] Close Phase 8 review
+
+### Phase 9 — Order Management
+
+- [x] Lifecycle map `placed → confirmed → shipped → delivered` plus `cancelled`,
+      with `statusHistory[]` events `{ status, at, note }`
+- [x] `tracking` `{ carrier, trackingNumber, updatedAt }`, required for shipping
+- [x] `PATCH /orders/:id/cancel`: owner-scoped, `placed`/`confirmed` only,
+      conditional update, idempotent repeat, per-line stock restore
+- [x] Paid cancellation refunds through the provider; `refund_pending` claim,
+      `refunded` on success, reset to `paid` on gateway failure
+- [x] Payment document gains `refundId` and `refundedAt`; order payment status
+      becomes `refunded`
+- [x] Late payment on a cancelled order is refunded automatically
+- [x] Admin `GET /admin/orders` with pagination, `status` and `userId` filters,
+      customer summaries via one batched user query
+- [x] Admin `GET /admin/orders/:id` and `PATCH /admin/orders/:id/status` with
+      transition, paid-confirmation and tracking validation
+- [x] Client `OrderTimeline`, `OrderTrackingCard`, `CancelOrderCard` and
+      `AdminOrderActions` wired into customer and admin order pages
+- [x] `/admin/orders` table with filter chips, pagination and customer columns;
+      `/admin/orders/:id` with actions, timeline, tracking and totals
+- [x] Server live checks (66): cancellation boundaries, stock restore, refund
+      state machine, late-payment refund, admin filters and transition guards
+- [x] Browser checks: unpaid and paid cancellation, refunded badge, admin list
+      filters, ship with tracking, deliver, no console errors
+- [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
+- [ ] Close Phase 9 review
 
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
@@ -431,7 +465,7 @@ twice.
 | 6 | Cart + wishlist | done |
 | 7 | Addresses, checkout quote, orders, order history/detail | done |
 | 8 | Razorpay integration, signature verification, webhook, failure/abandon | done |
-| 9 | Order lifecycle + cancellation/refund | not started |
+| 9 | Order lifecycle + cancellation/refund | done |
 | 10 | Admin dashboard + Cloudinary | not started |
 | 11 | Tests + security hardening | not started |
 | 12 | Redis, jobs, email, logging, Docker | not started |

@@ -1,8 +1,10 @@
+import { Link } from 'react-router-dom';
+import { ArrowRight, KeyRound, Layers, PackageSearch, ShieldCheck } from 'lucide-react';
 import { getErrorMessage } from '@/api/errors';
 import { Container } from '@/components/layout/Container';
+import { buttonStyles } from '@/components/ui/button-styles';
 import { useAdminPing } from '@/hooks/useAdminPing';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
-import { KeyRound, Layers, ShieldCheck } from 'lucide-react';
 
 const layers = [
   {
@@ -89,7 +91,7 @@ export function AdminPage() {
                   <code className="rounded bg-cream/10 px-1.5 py-0.5 font-mono text-xs">
                     GET /admin/ping
                   </code>
-                  . Management screens arrive in a later phase.
+                  . Use the order desk to move customer orders through their lifecycle.
                 </p>
                 <div className="mt-auto pt-8">
                   <span className="inline-flex items-center gap-2 rounded-full border border-cream/15 bg-cream/5 px-3 py-1.5 text-xs text-cream/70">
@@ -126,9 +128,14 @@ export function AdminPage() {
           </ul>
 
           <p className="mt-6 rounded-xl bg-ink-50 px-4 py-3 text-xs leading-relaxed text-ink-500">
-            Catalogue management, orders and customers arrive in Phase 10. Until then, this page is
-            a live RBAC check against the API.
+            Order management is live. Catalogue, customer and coupon management arrive in Phase 10.
           </p>
+
+          <Link to="/admin/orders" className={`${buttonStyles({ fullWidth: true })} mt-4`}>
+            <PackageSearch className="h-4 w-4" aria-hidden="true" />
+            Manage orders
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </section>
       </div>
     </Container>

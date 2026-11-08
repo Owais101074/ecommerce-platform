@@ -4,7 +4,7 @@
 > how it is architected, what each phase delivers, how every important workflow
 > runs, and how to explain it to anyone.
 >
-> Last updated: 2026-11-09 · Branch: `main` · Latest phase: Phase 8
+> Last updated: 2026-11-09 · Branch: `main` · Latest phase: Phase 9
 > Repository: https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
@@ -38,9 +38,9 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Database | MongoDB 8.2 + Mongoose 9 |
 | Frontend | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
 | Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 8 complete (Razorpay/mock payments, verification, webhook), awaiting review |
-| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8 |
-| Next phase | Phase 9 — Order Management |
+| Current phase | Phase 9 complete (order lifecycle, cancellation/refunds, admin order desk), awaiting review |
+| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 |
+| Next phase | Phase 10 — Admin Dashboard |
 | API base | `http://localhost:5000/api/v1` |
 | Client base | `http://localhost:5173` |
 | Database (dev) | `mongodb://127.0.0.1:27017/ecommerce_dev` |
@@ -88,7 +88,7 @@ previous phase is reviewed and approved with the exact phrase
 
 If asked "what is finished right now?", answer:
 
-> "Phases 0–7 are complete: the repository and architecture; the
+> "Phases 0–9 are complete: the repository and architecture; the
 > Express/TypeScript foundation; authentication and RBAC with 18 passing checks;
 > the product/category catalogue with 34 checks; the React foundation with a
 > storefront design refresh; the customer shopping experience; cart and wishlist
@@ -97,7 +97,10 @@ If asked "what is finished right now?", answer:
 > order, Razorpay order creation, HMAC signature verification, a raw-body signed
 > webhook, failure/abandon handling and a payment panel on the order page, with
 > 60 passing API checks. Because no real merchant credentials are used in
-> development, an explicit mock provider signs with the same HMAC code."
+> development, an explicit mock provider signs with the same HMAC code. Phase 9
+> adds the order lifecycle: a transition map, a server-owned timeline, tracking,
+> safe cancellation with stock restore, an idempotent refund state machine, and
+> an admin order desk, verified by 66 API checks and browser flows."
 
 ---
 
@@ -609,11 +612,23 @@ Default-address invariants enforced in the service:
 | `couponCode` | string \| null | reserved for Phase 10 |
 | `status` | enum | `placed` → `confirmed` → `shipped` → `delivered` / `cancelled` |
 | `paymentStatus` | enum | `pending` → `paid` / `failed` / `refunded` |
+| `statusHistory` | array | `{ status, at, note }` events, oldest first |
+| `tracking` | object \| null | `{ carrier, trackingNumber, updatedAt }`, set on shipping |
 | `createdAt` / `updatedAt` | Date | timestamps |
 
-Index: `(userId, createdAt)` plus a unique index on `orderNumber`. No stock or
-price is read from the client; the cart and catalogue are read again when the
-order is placed.
+Indexes: `(userId, createdAt)`, `(status, createdAt)` and a unique index on
+`orderNumber`. No stock or price is read from the client; the cart and catalogue
+are read again when the order is placed.
+
+Lifecycle rules (Phase 9):
+
+- `placed → confirmed → shipped → delivered`; `cancelled` is terminal.
+- Only `placed` and `confirmed` can be cancelled.
+- `confirmed` requires `paymentStatus: paid`.
+- `shipped` requires both `carrier` and `trackingNumber`.
+- Every change is a conditional update guarded by the previous status and is
+  appended to `statusHistory`. The mapper prepends `placed` and appends the
+  current status for orders created before history existed.
 
 `payments`:
 
@@ -627,11 +642,13 @@ order is placed.
 | `providerPaymentId` | string \| null | set when the signature verifies |
 | `amount` | number | integer paise, copied from the order total |
 | `currency` | string | `INR` |
-| `status` | enum | `created` → `paid` / `failed` \| `refunded` |
+| `status` | enum | `created` → `paid` / `failed` \| `refund_pending` → `refunded` |
 | `failureReason` | string \| null | e.g. `simulated_failure`, `abandoned`, gateway text |
 | `attempts` | number | starts at 1; increments on retry |
 | `rawPayload` | Mixed | verification or webhook body for audit |
 | `paidAt` | Date \| null | when the payment completed |
+| `refundId` | string \| null | provider refund id (`rfnd_*` / `rfnd_mock_*`) |
+| `refundedAt` | Date \| null | when the refund completed |
 | `createdAt` / `updatedAt` | Date | timestamps |
 
 Index: `(userId, createdAt)` plus unique indexes on `orderId` and
@@ -738,12 +755,15 @@ invalid token, 403 wrong role, 404 not found, 409 duplicate, 422 business rule
 | POST | `/payments/abandon` | access token | record a dismissed attempt as failed |
 | POST | `/payments/mock/complete` | access token | mock mode only; signed success or simulated failure |
 | POST | `/payments/webhook` | public + signature | raw-body gateway events (`payment.captured`, `payment.failed`) |
+| PATCH | `/orders/:id/cancel` | access token (owner) | cancel a `placed`/`confirmed` order, restore stock and refund if paid |
+| GET | `/admin/orders` | admin | all orders with `page`, `limit`, `status` and `userId` filters |
+| GET | `/admin/orders/:id` | admin | any order detail with customer summary |
+| PATCH | `/admin/orders/:id/status` | admin | confirm, ship with tracking, deliver or cancel |
 
 ### 8.3 Planned endpoints by phase
 
 | Phase | Endpoints |
 |---|---|
-| 9 | cancel order, admin order routes |
 | 10 | `/coupons/*`, `/admin/*` |
 
 Full contract: `docs/api-contract.md`. Any endpoint added outside it must be
@@ -1181,16 +1201,79 @@ paths, and mutation-driven cache invalidation across related resources.
 
 ---
 
-### Phase 9 — Order Management — **PLANNED**
+### Phase 9 — Order Management — **DONE**
 
 **Goal:** manage the order lifecycle.
 
-**Will deliver:**
-- Status transitions (placed → confirmed → shipped → delivered).
-- Cancellation rules per status.
-- Refund workflow linked to payment status.
-- Admin order listing and status updates.
-- Customer status timeline and tracking details on the existing order pages.
+**Delivered:**
+- One server-owned transition map:
+  `placed → confirmed → shipped → delivered`, with `cancelled` reachable from
+  `placed` and `confirmed` only. Any other move is rejected.
+- `statusHistory[]` stores `{ status, at, note }` for every transition. The
+  mapper prepends `placed` and appends the current status when an older order has
+  no history, so the timeline is complete without a data migration.
+- `tracking` stores `{ carrier, trackingNumber, updatedAt }`, is required when
+  shipping, and is cleared if the order is cancelled.
+- `PATCH /orders/:id/cancel` is owner-scoped and uses a conditional
+  `findOneAndUpdate({ _id, status: { $in: ['placed', 'confirmed'] } })`. Only the
+  request that wins the transition restores stock, so concurrent cancels cannot
+  double-restore. A repeat cancel returns the already-cancelled order.
+- Paid cancellations refund through `payment.provider.ts`, which calls
+  Razorpay's `POST /v1/payments/:id/refund` in `razorpay` mode and generates
+  `rfnd_mock_*` ids in mock mode.
+- The refund state machine claims the payment atomically:
+  `paid → refund_pending`, calls the provider, then sets `refunded` with
+  `refundId` and `refundedAt` and updates the order to
+  `paymentStatus: refunded`. If the provider fails, the payment resets to `paid`
+  and the response returns `refundPending: true` so a later cancel retries.
+  A concurrent cancel while `refund_pending` returns `409`.
+- `confirmPayment` now detects a payment that arrives after cancellation
+  (webhook or late verification) and refunds it automatically.
+- Admin `GET /admin/orders` supports `page`, `limit` (max 50), `status` and
+  `userId`, and resolves customer summaries with one
+  `User.find({ _id: { $in } })` instead of one query per row.
+- Admin `GET /admin/orders/:id` and `PATCH /admin/orders/:id/status` reuse the
+  same lifecycle service. Confirming requires `paymentStatus: paid`; shipping
+  requires a carrier and tracking number; transitions are conditional on the
+  previous status, so a stale admin screen gets `409` rather than skipping a
+  step. Admin cancellation reuses the customer cancellation path, including
+  stock and refunds.
+- Client: `OrderTimeline`, `OrderTrackingCard`, `CancelOrderCard` and
+  `AdminOrderActions`; `/orders/:id` shows history, tracking and a two-step
+  cancel with refund wording. `/admin/orders` is a filterable, paginated table
+  and `/admin/orders/:id` shows the full order with status actions. Both are
+  behind `RequireAdmin`.
+- Query hooks `useCancelOrder`, `useAdminOrders`, `useAdminOrder` and
+  `useUpdateAdminOrderStatus` invalidate customer orders, admin orders, the
+  relevant detail and product stock after a mutation.
+
+**Verification:** 66 live API checks passed: auth/role boundaries, unknown ids,
+invalid bodies, unpaid and paid cancellation, stock restore, repeat cancel,
+nested cancels, `refund_pending` → `refunded` with a mock refund id, payment and
+order payment status, automatic refund of a late payment, `409` for shipped and
+delivered cancels, admin filters/pagination/customer summaries, unpaid confirm
+blocked, skipped and stale transitions, ship with tracking, partial tracking
+rejected, deliver, admin cancel with refund, and terminal-state guards. Browser
+checks: unpaid cancel shows CANCELLED with a two-entry timeline; paid cancel
+shows CANCELLED + PAYMENT REFUNDED; the admin desk lists 17 orders, filters by
+`?status=shipped`, keeps "Mark shipped" disabled until both tracking fields are
+filled, then shows SHIPPED plus the tracking card, and delivers the order. No
+React console errors. `typecheck`, `lint`, `format:check` and `build` pass for
+both apps.
+
+**Be able to explain:** why the lifecycle map lives on the server, why the
+status update is conditional, how stock restoration avoids double-decrement
+without transactions, why the refund claims `refund_pending` before calling the
+gateway, what happens when the gateway refund fails, why a payment can arrive
+after cancellation and how that is handled, why `statusHistory` is data instead
+of a client-computed timeline, why admin confirmation requires a paid payment,
+and why shipping requires both tracking fields.
+
+**Key concepts learned:** optimistic concurrency with conditional updates,
+idempotent state transitions, compensating actions (stock restore, refund),
+saga-like multi-step flows without transactions, status history as an event log,
+N+1 avoidance with batched lookups, and separating customer and admin surfaces
+while sharing one service layer.
 
 ---
 
@@ -1622,6 +1705,19 @@ DOM-triggered interactions, network and console logs.
 Screenshots remain unavailable because the in-app browser reports a 0×0 hidden
 viewport.
 
+### Verified Phase 9 results (66 API checks + browser)
+
+| Area | Checks |
+|---|---|
+| Cancellation boundaries | anonymous `401`, unknown order `404`, invalid body `400`, cancel while `placed` → `cancelled`, stock restored once, repeat cancel idempotent, nested cancels, `shipped`/`delivered` cancel `409` |
+| Refunds | paid cancel → payment `refund_pending` → `refunded`, `refundId` + `refundedAt` stored, order `paymentStatus: refunded`, payment late-arriving on a cancelled order auto-refunded |
+| Admin list | customer `403`, `status` filter, `userId` filter, pagination meta, customer name/email summaries, unknown detail `404` |
+| Admin transitions | unpaid confirm `409`, invalid transition `400`, stale transition `409`, confirm → ship with tracking → deliver, partial tracking `400`, admin cancel restores stock and refunds, terminal states have no moves |
+| Browser | unpaid cancel timeline, paid cancel shows CANCELLED + PAYMENT REFUNDED, cross-account order `404`, 17-order admin table with customer/status/payment/total, `?status=shipped` empty state, ship button disabled until both fields, SHIPPED + tracking card, delivered timeline, no console errors |
+
+`typecheck`, `lint`, `format:check` and `build` pass for both apps. Screenshots
+remain unavailable because the in-app browser reports a 0×0 hidden viewport.
+
 ---
 
 ## 12. Engineering workflow
@@ -1949,6 +2045,63 @@ Both paths call the same `confirmPayment` helper with guarded updates
 no-op. A later `payment.failed` cannot downgrade a paid payment because the
 failure update also excludes paid documents.
 
+**Q60. Why keep the status transition map on the server?**  
+The client is untrusted and can send any status. `ALLOWED_TRANSITIONS` is a
+single source of truth in `order.service.ts`, so the API rejects skips (for
+example `placed → shipped`) and moves that are impossible in real life. The UI
+only renders the actions that are valid, but correctness does not depend on it.
+
+**Q61. Why is the status update conditional on the previous status?**  
+An admin screen can be stale: two tabs may both show `confirmed`. The update
+uses `{ _id, status: 'confirmed' }` and reports `409` if nothing matched, so the
+second request cannot ship an order twice or overwrite a newer transition.
+That is optimistic concurrency without locks.
+
+**Q62. How can stock be restored safely if cancel is clicked twice?**  
+Only the request that actually flips the order to `cancelled` restores stock.
+The conditional update returns the document only once; the second request sees
+an already-cancelled order and returns it without touching stock. This is the
+same idea as the conditional `$gte` decrement used at order placement.
+
+**Q63. Walk through a refund on a paid order.**  
+Cancellation first flips the order to `cancelled` and restores stock. The
+payment is claimed with `paid → refund_pending` so no second request can refund
+the same payment. The provider call returns a refund id. The payment is then set
+to `refunded` with `refundId` and `refundedAt`, and the order's `paymentStatus`
+becomes `refunded`. If the gateway call fails, the payment is reset to `paid`,
+the order stays cancelled, and the response raises `refundPending` so a retry
+can claim it again.
+
+**Q64. What if a customer pays after the order was cancelled?**  
+`confirmPayment` checks the order after marking the payment paid. If the order
+is already `cancelled`, it calls `refundOrderPayment` immediately. The customer
+is never left with a charge for an order that no longer exists.
+
+**Q65. Why is `statusHistory` stored instead of derived?**  
+A status field alone loses when each step happened. An event array preserves
+timestamps and notes, supports a timeline without guessing, and is append-only
+in normal operation. The mapper backfills `placed` and the current status so
+orders created before Phase 9 still render a complete timeline.
+
+**Q66. Why does confirming an order require `paymentStatus: paid`?**  
+`confirmed` means the business has accepted the order, which for this store
+means it is paid. Allowing confirmation of an unpaid order would let stock be
+reserved indefinitely with no money collected and would make the status
+meaningless.
+
+**Q67. Why avoid N+1 queries in the admin order list?**  
+The table needs a customer for every row. Loading orders and then querying
+`User.findById` per row would be one extra round trip per order. The service
+collects the distinct user ids and runs one `User.find({ _id: { $in: ids } })`,
+then maps them into the response.
+
+**Q68. Why separate `/admin/orders` from `/orders`?**  
+The customer routes are always scoped to `req.user.id`, while admin routes are
+not. Separate prefixes keep the guards obvious (`authenticate` vs
+`authenticate + authorize('admin')`), allow different filters and payloads
+(customer summary, any user), and prevent an ownership check from being
+accidentally skipped.
+
 ### "Explain the project in a deeper 2 minutes"
 
 > "The repo is a monorepo with a React client and an Express API. The API is
@@ -1972,7 +2125,11 @@ failure update also excludes paid documents.
 > enforced default, a server-computed checkout quote with inclusive GST and a
 > shipping threshold, and order creation that snapshots items and address,
 > decrements stock with rollback and clears the cart, followed by order history
-> and detail pages."
+> and detail pages. Phase 8 adds payments: a Razorpay/mock provider, HMAC
+> signature verification, a raw-body webhook, retries and abandonment. Phase 9
+> adds the order lifecycle: a server-owned transition map, a status timeline,
+> tracking details, safe cancellation with stock restore, an idempotent refund
+> state machine, and admin order listing and status updates."
 
 ---
 
@@ -2006,6 +2163,12 @@ failure update also excludes paid documents.
 | Raw body | The unparsed request bytes, required to verify a signature |
 | Timing-safe comparison | Comparing secrets in constant time to avoid leaking information |
 | Mock provider | Local payment simulator that keeps the real signing and verification code paths |
+| Status history | Append-only `{ status, at, note }` events describing how an order reached its current state |
+| Conditional update | `findOneAndUpdate` with the expected status in the filter; returns nothing if another request already moved it |
+| Optimistic concurrency | Preventing lost updates by making the write succeed only if the row still matches the state you read |
+| Compensating action | Undoing a completed step when a later step fails, e.g. restoring stock or issuing a refund |
+| Refund claim | The atomic `paid → refund_pending` update that guarantees one in-flight refund per payment |
+| N+1 query | Loading a list and then querying once per row; avoided here with a batched `$in` lookup |
 | `select: false` | Mongoose field hidden unless explicitly requested |
 | Hydrated document | Mongoose document instance, not a plain object |
 | CSRF | Cross-site request forgery |
@@ -2020,9 +2183,9 @@ failure update also excludes paid documents.
 | Area | Limitation | Plan |
 |---|---|---|
 | Payments | No real merchant credentials are used here, so development runs `PAYMENT_MODE=mock`; the `razorpay` path is coded but not exercised against the live API | Swap test keys into `server/.env` and set `PAYMENT_MODE=razorpay` |
-| Refunds | `refunded` exists in the payment enum but no refund workflow is built | Phase 9 |
+| Refunds | Refunds are implemented for cancellation, but there is no standalone admin refund screen or partial-refund UI | Add partial refunds and a refund audit view if required |
 | Webhook retries | The endpoint is idempotent but no queue/backoff is added for failed processing | Phase 12 |
-| Order lifecycle | Only the `placed` status exists; no cancellation or tracking timeline | Phase 9 |
+| Order lifecycle | Customer cancel and admin confirm/ship/deliver/cancel are implemented; tracking is manual, not fed by a carrier API | Carrier integration later |
 | Coupons | The hook rejects every code; no coupon documents or discounts | Phase 10 |
 | Stock safety | Conditional updates with rollback, not MongoDB transactions | Transactions need a replica set; document in Phase 12 |
 | Profile API | Name and password only; email changes and avatar upload are not built | Later |
@@ -2047,9 +2210,9 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 9 — Order Management: status transitions
-(placed → confirmed → shipped → delivered), cancellation rules per status, a
-refund workflow linked to payment status, and admin order listing and updates.
+Phase 10 — Admin Dashboard: admin layout and dashboard, sales/revenue analytics,
+product/inventory/customer/coupon management, Cloudinary image uploads, and
+low-stock/top-product reports.
 
 Do not start until the reviewer explicitly says:
 

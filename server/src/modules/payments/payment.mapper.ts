@@ -14,6 +14,8 @@ export function toPaymentDTO(payment: PaymentDocument): PaymentDTO {
     failureReason: payment.failureReason ?? null,
     attempts: payment.attempts,
     paidAt: payment.paidAt ?? null,
+    refundId: payment.refundId ?? null,
+    refundedAt: payment.refundedAt ?? null,
     createdAt: payment.createdAt,
     updatedAt: payment.updatedAt,
   };

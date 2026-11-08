@@ -2,15 +2,41 @@ import { randomBytes } from 'node:crypto';
 import { ApiError } from '../../utils/ApiError';
 import { Address } from '../addresses/address.model';
 import type { AddressDocument } from '../addresses/address.model';
+import { User } from '../auth/auth.model';
 import * as cartService from '../cart/cart.service';
+import * as paymentService from '../payments/payment.service';
 import { Product } from '../products/product.model';
 import { resolveCoupon } from './coupon.service';
 import { calculateOrderPricing } from './order.pricing';
-import { toOrderDTO } from './order.mapper';
+import { toAdminOrderDTO, toOrderDTO } from './order.mapper';
 import { Order } from './order.model';
-import type { IOrderAddress, OrderDocument } from './order.model';
-import type { CheckoutQuoteDTO, OrderDTO, OrderListResult } from './order.types';
-import type { OrderListQuery, PlaceOrderInput } from './order.validation';
+import type { IOrderAddress, IOrderItem, IOrderStatusEvent, OrderDocument } from './order.model';
+import type {
+  AdminOrderDTO,
+  AdminOrderListResult,
+  AdminStatusResult,
+  CancelOrderResult,
+  CheckoutQuoteDTO,
+  OrderDTO,
+  OrderListResult,
+  OrderStatus,
+} from './order.types';
+import type {
+  AdminOrderListQuery,
+  AdminUpdateOrderStatusInput,
+  OrderListQuery,
+  PlaceOrderInput,
+} from './order.validation';
+
+const CANCELLABLE_STATUSES: OrderStatus[] = ['placed', 'confirmed'];
+
+const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  placed: ['confirmed', 'cancelled'],
+  confirmed: ['shipped', 'cancelled'],
+  shipped: ['delivered'],
+  delivered: [],
+  cancelled: [],
+};
 
 function generateOrderNumber(): string {
   const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
@@ -28,6 +54,18 @@ function toAddressSnapshot(address: AddressDocument): IOrderAddress {
     state: address.state,
     pincode: address.pincode,
   };
+}
+
+function statusEvent(status: OrderStatus, note: string | null = null): IOrderStatusEvent {
+  return { status, at: new Date(), note };
+}
+
+async function restoreStock(items: IOrderItem[]): Promise<void> {
+  await Promise.all(
+    items.map((item) =>
+      Product.updateOne({ _id: item.productId }, { $inc: { stock: item.quantity } }),
+    ),
+  );
 }
 
 export async function getCheckoutQuote(
@@ -105,6 +143,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
       address: toAddressSnapshot(address),
       ...pricing,
       couponCode: coupon.code,
+      statusHistory: [statusEvent('placed')],
     });
   } catch (error) {
     await Promise.all(
@@ -149,4 +188,194 @@ export async function getOrder(userId: string, orderId: string): Promise<OrderDT
   }
 
   return toOrderDTO(order);
+}
+
+async function cancelOrderDocument(
+  order: OrderDocument,
+): Promise<{ order: OrderDocument; refundPending: boolean }> {
+  if (order.status === 'shipped' || order.status === 'delivered') {
+    throw new ApiError(409, `Orders that are already ${order.status} cannot be cancelled`);
+  }
+
+  let cancelled = order;
+
+  if (CANCELLABLE_STATUSES.includes(order.status)) {
+    const changed = await Order.findOneAndUpdate(
+      { _id: order._id, status: { $in: CANCELLABLE_STATUSES } },
+      {
+        $set: { status: 'cancelled', tracking: null },
+        $push: { statusHistory: statusEvent('cancelled') },
+      },
+      { new: true },
+    );
+
+    if (!changed) {
+      const current = await Order.findById(order._id);
+
+      if (!current) {
+        throw new ApiError(404, 'Order not found');
+      }
+
+      if (current.status === 'shipped' || current.status === 'delivered') {
+        throw new ApiError(409, `Orders that are already ${current.status} cannot be cancelled`);
+      }
+
+      if (current.status !== 'cancelled') {
+        throw new ApiError(409, 'Order could not be cancelled');
+      }
+
+      cancelled = current;
+    } else {
+      cancelled = changed;
+      await restoreStock(cancelled.items);
+    }
+  }
+
+  let refundPending = false;
+
+  if (cancelled.paymentStatus === 'paid') {
+    try {
+      const refund = await paymentService.refundOrderPayment(cancelled._id.toString());
+
+      if (refund) {
+        cancelled = (await Order.findById(cancelled._id)) ?? cancelled;
+      } else {
+        refundPending = true;
+      }
+    } catch (error) {
+      // The order is already cancelled, so surface a pending refund instead of failing the request.
+      console.error('[orders] Refund failed during cancellation', error);
+      refundPending = true;
+    }
+  }
+
+  return { order: cancelled, refundPending };
+}
+
+export async function cancelOrder(userId: string, orderId: string): Promise<CancelOrderResult> {
+  const order = await Order.findOne({ _id: orderId, userId });
+
+  if (!order) {
+    throw new ApiError(404, 'Order not found');
+  }
+
+  const result = await cancelOrderDocument(order);
+
+  return { order: toOrderDTO(result.order), refundPending: result.refundPending };
+}
+
+async function toAdminOrder(order: OrderDocument): Promise<AdminOrderDTO> {
+  const user = await User.findById(order.userId).select('name email');
+
+  return toAdminOrderDTO(order, {
+    id: order.userId.toString(),
+    name: user?.name ?? 'Unknown customer',
+    email: user?.email ?? '',
+  });
+}
+
+export async function listAdminOrders(query: AdminOrderListQuery): Promise<AdminOrderListResult> {
+  const filter: Record<string, unknown> = {};
+
+  if (query.status) {
+    filter.status = query.status;
+  }
+
+  if (query.userId) {
+    filter.userId = query.userId;
+  }
+
+  const skip = (query.page - 1) * query.limit;
+  const [total, orders] = await Promise.all([
+    Order.countDocuments(filter),
+    Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(query.limit),
+  ]);
+
+  const users = await User.find({
+    _id: { $in: orders.map((order) => order.userId) },
+  }).select('name email');
+  const usersById = new Map(users.map((user) => [user._id.toString(), user]));
+
+  return {
+    orders: orders.map((order) => {
+      const user = usersById.get(order.userId.toString());
+
+      return toAdminOrderDTO(order, {
+        id: order.userId.toString(),
+        name: user?.name ?? 'Unknown customer',
+        email: user?.email ?? '',
+      });
+    }),
+    meta: {
+      page: query.page,
+      limit: query.limit,
+      total,
+      totalPages: total === 0 ? 0 : Math.ceil(total / query.limit),
+    },
+  };
+}
+
+export async function getAdminOrder(orderId: string): Promise<AdminOrderDTO> {
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    throw new ApiError(404, 'Order not found');
+  }
+
+  return toAdminOrder(order);
+}
+
+export async function updateOrderStatus(
+  orderId: string,
+  input: AdminUpdateOrderStatusInput,
+): Promise<AdminStatusResult> {
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    throw new ApiError(404, 'Order not found');
+  }
+
+  if (!ALLOWED_TRANSITIONS[order.status].includes(input.status)) {
+    throw new ApiError(409, `Order cannot move from ${order.status} to ${input.status}`);
+  }
+
+  if (input.status === 'confirmed' && order.paymentStatus !== 'paid') {
+    throw new ApiError(409, 'Only paid orders can be confirmed');
+  }
+
+  let updated: OrderDocument;
+  let refundPending = false;
+
+  if (input.status === 'cancelled') {
+    const result = await cancelOrderDocument(order);
+    updated = result.order;
+    refundPending = result.refundPending;
+  } else {
+    const setFields: Record<string, unknown> = { status: input.status };
+
+    if (input.status === 'shipped' && input.carrier && input.trackingNumber) {
+      setFields.tracking = {
+        carrier: input.carrier,
+        trackingNumber: input.trackingNumber,
+        updatedAt: new Date(),
+      };
+    }
+
+    const changed = await Order.findOneAndUpdate(
+      { _id: order._id, status: order.status },
+      {
+        $set: setFields,
+        $push: { statusHistory: statusEvent(input.status, input.note ?? null) },
+      },
+      { new: true },
+    );
+
+    if (!changed) {
+      throw new ApiError(409, 'Order changed in the meantime; refresh and try again');
+    }
+
+    updated = changed;
+  }
+
+  return { order: await toAdminOrder(updated), refundPending };
 }

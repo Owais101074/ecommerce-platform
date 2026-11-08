@@ -15,6 +15,8 @@ export interface IPayment {
   attempts: number;
   rawPayload: unknown;
   paidAt: Date | null;
+  refundId: string | null;
+  refundedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -59,7 +61,7 @@ const paymentSchema = new Schema<IPayment>(
     },
     status: {
       type: String,
-      enum: ['created', 'paid', 'failed', 'refunded'],
+      enum: ['created', 'paid', 'failed', 'refund_pending', 'refunded'],
       default: 'created',
     },
     failureReason: {
@@ -78,6 +80,14 @@ const paymentSchema = new Schema<IPayment>(
       default: null,
     },
     paidAt: {
+      type: Date,
+      default: null,
+    },
+    refundId: {
+      type: String,
+      default: null,
+    },
+    refundedAt: {
       type: Date,
       default: null,
     },

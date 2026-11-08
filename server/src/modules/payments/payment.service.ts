@@ -89,8 +89,23 @@ async function confirmPayment(
   );
   await Order.updateOne(
     { _id: payment.orderId, status: 'placed' },
-    { $set: { status: 'confirmed' } },
+    {
+      $set: { status: 'confirmed' },
+      $push: {
+        statusHistory: { status: 'confirmed', at: new Date(), note: 'Payment received' },
+      },
+    },
   );
+
+  const order = await Order.findById(payment.orderId).select('status');
+
+  if (order?.status === 'cancelled') {
+    try {
+      await refundOrderPayment(payment.orderId.toString());
+    } catch (error) {
+      console.error('[payments] Late payment could not be refunded', error);
+    }
+  }
 }
 
 async function markFailed(
@@ -257,6 +272,74 @@ export async function mockCompletePayment(
     },
     payment: toPaymentDTO(payment),
   };
+}
+
+export async function refundOrderPayment(orderId: string): Promise<PaymentDTO | null> {
+  const payment = await Payment.findOne({ orderId });
+
+  if (!payment) {
+    return null;
+  }
+
+  if (payment.status === 'refunded') {
+    return toPaymentDTO(payment);
+  }
+
+  if (payment.status !== 'paid' || !payment.providerPaymentId) {
+    return null;
+  }
+
+  const claimed = await Payment.findOneAndUpdate(
+    { _id: payment._id, status: 'paid' },
+    { $set: { status: 'refund_pending' } },
+    { new: true },
+  );
+
+  if (!claimed) {
+    const current = await Payment.findById(payment._id);
+
+    if (current?.status === 'refunded') {
+      return toPaymentDTO(current);
+    }
+
+    throw new ApiError(409, 'A refund for this order is already in progress');
+  }
+
+  let refundId: string;
+
+  try {
+    refundId = await provider.refundProviderPayment({
+      providerPaymentId: claimed.providerPaymentId as string,
+      amount: claimed.amount,
+      notes: { orderId },
+    });
+  } catch (error) {
+    await Payment.updateOne(
+      { _id: claimed._id, status: 'refund_pending' },
+      { $set: { status: 'paid' } },
+    );
+    throw error;
+  }
+
+  const refunded = await Payment.findOneAndUpdate(
+    { _id: claimed._id, status: 'refund_pending' },
+    {
+      $set: {
+        status: 'refunded',
+        refundId,
+        refundedAt: new Date(),
+        failureReason: null,
+      },
+    },
+    { new: true },
+  );
+
+  await Order.updateOne(
+    { _id: claimed.orderId, paymentStatus: { $ne: 'refunded' } },
+    { $set: { paymentStatus: 'refunded' } },
+  );
+
+  return refunded ? toPaymentDTO(refunded) : null;
 }
 
 export async function handleWebhookEvent(

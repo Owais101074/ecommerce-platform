@@ -35,3 +35,13 @@ export async function detail(req: Request, res: Response): Promise<void> {
   const order = await orderService.getOrder(currentUserId(req), req.params.id as string);
   sendSuccess(res, 200, 'Order fetched', { order });
 }
+
+export async function cancel(req: Request, res: Response): Promise<void> {
+  const result = await orderService.cancelOrder(currentUserId(req), req.params.id as string);
+  sendSuccess(
+    res,
+    200,
+    result.refundPending ? 'Order cancelled; refund is pending' : 'Order cancelled',
+    result,
+  );
+}

@@ -1,5 +1,5 @@
 import type { ApiMeta, ApiSuccess } from '@/types/api';
-import type { CheckoutQuote, Order, OrderList } from '@/types/order';
+import type { CancelOrderResult, CheckoutQuote, Order, OrderList } from '@/types/order';
 import { http } from './http';
 
 export async function fetchCheckoutQuote(couponCode?: string): Promise<CheckoutQuote> {
@@ -34,4 +34,9 @@ export async function fetchOrders(page = 1, limit = 10): Promise<OrderList> {
 export async function fetchOrder(orderId: string): Promise<Order> {
   const { data } = await http.get<ApiSuccess<{ order: Order }>>(`/orders/${orderId}`);
   return data.data.order;
+}
+
+export async function cancelOrderRequest(orderId: string): Promise<CancelOrderResult> {
+  const { data } = await http.patch<ApiSuccess<CancelOrderResult>>(`/orders/${orderId}/cancel`);
+  return data.data;
 }

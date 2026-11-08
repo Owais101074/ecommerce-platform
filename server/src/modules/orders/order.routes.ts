@@ -11,6 +11,7 @@ router.use(authenticate);
 router.post('/quote', validate(quoteSchema), orderController.quote);
 router.post('/', validate(placeOrderSchema), orderController.place);
 router.get('/', validateQuery(orderListQuerySchema), orderController.list);
+router.patch('/:id/cancel', orderController.cancel);
 router.get('/:id', orderController.detail);
 
 export default router;

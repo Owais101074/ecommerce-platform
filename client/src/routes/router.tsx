@@ -2,6 +2,8 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AccountPage } from '@/pages/AccountPage';
 import { AddressesPage } from '@/pages/AddressesPage';
+import { AdminOrderDetailPage } from '@/pages/AdminOrderDetailPage';
+import { AdminOrdersPage } from '@/pages/AdminOrdersPage';
 import { AdminPage } from '@/pages/AdminPage';
 import { CartPage } from '@/pages/CartPage';
 import { CheckoutPage } from '@/pages/CheckoutPage';
@@ -100,6 +102,22 @@ export const router = createBrowserRouter([
         element: (
           <RequireAdmin>
             <AdminPage />
+          </RequireAdmin>
+        ),
+      },
+      {
+        path: 'admin/orders',
+        element: (
+          <RequireAdmin>
+            <AdminOrdersPage />
+          </RequireAdmin>
+        ),
+      },
+      {
+        path: 'admin/orders/:id',
+        element: (
+          <RequireAdmin>
+            <AdminOrderDetailPage />
           </RequireAdmin>
         ),
       },

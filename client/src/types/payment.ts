@@ -1,6 +1,6 @@
 export type PaymentMode = 'mock' | 'razorpay';
 
-export type PaymentRecordStatus = 'created' | 'paid' | 'failed' | 'refunded';
+export type PaymentRecordStatus = 'created' | 'paid' | 'failed' | 'refund_pending' | 'refunded';
 
 export interface PaymentRecord {
   id: string;
@@ -14,6 +14,8 @@ export interface PaymentRecord {
   failureReason: string | null;
   attempts: number;
   paidAt: string | null;
+  refundId: string | null;
+  refundedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

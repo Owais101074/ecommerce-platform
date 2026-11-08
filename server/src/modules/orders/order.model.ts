@@ -22,6 +22,18 @@ export interface IOrderAddress {
   pincode: string;
 }
 
+export interface IOrderStatusEvent {
+  status: OrderStatus;
+  at: Date;
+  note: string | null;
+}
+
+export interface IOrderTracking {
+  carrier: string;
+  trackingNumber: string;
+  updatedAt: Date;
+}
+
 export interface IOrder {
   userId: Types.ObjectId;
   orderNumber: string;
@@ -35,6 +47,8 @@ export interface IOrder {
   couponCode: string | null;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  statusHistory: IOrderStatusEvent[];
+  tracking: IOrderTracking | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -80,6 +94,28 @@ const orderAddressSchema = new Schema<IOrderAddress>(
     city: { type: String, required: true },
     state: { type: String, required: true },
     pincode: { type: String, required: true },
+  },
+  { _id: false },
+);
+
+const orderStatusEventSchema = new Schema<IOrderStatusEvent>(
+  {
+    status: {
+      type: String,
+      enum: ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+      required: true,
+    },
+    at: { type: Date, required: true },
+    note: { type: String, default: null },
+  },
+  { _id: false },
+);
+
+const orderTrackingSchema = new Schema<IOrderTracking>(
+  {
+    carrier: { type: String, required: true },
+    trackingNumber: { type: String, required: true },
+    updatedAt: { type: Date, required: true },
   },
   { _id: false },
 );
@@ -149,11 +185,20 @@ const orderSchema = new Schema<IOrder>(
       enum: ['pending', 'paid', 'failed', 'refunded'],
       default: 'pending',
     },
+    statusHistory: {
+      type: [orderStatusEventSchema],
+      default: [],
+    },
+    tracking: {
+      type: orderTrackingSchema,
+      default: null,
+    },
   },
   { timestamps: true },
 );
 
 orderSchema.index({ userId: 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
 
 export type OrderDocument = HydratedDocument<IOrder>;
 

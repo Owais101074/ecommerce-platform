@@ -37,7 +37,7 @@ ecommerce-platform/
 | 6 | Cart and wishlist | Complete |
 | 7 | Checkout, addresses and orders | Complete |
 | 8 | Payments | Complete |
-| 9 | Order management | Not started |
+| 9 | Order management | Complete |
 | 10 | Admin dashboard | Not started |
 | 11 | Testing and security | Not started |
 | 12 | Advanced backend | Not started |
@@ -192,6 +192,33 @@ development. Production configuration rejects mock mode. The webhook mount reads
 the raw request body before `express.json()` so the signature is checked over the
 exact bytes Razorpay signed. Payment secrets live only in `server/.env`.
 
+### Order management (Phase 9)
+
+| Method | Endpoint | Access |
+|---|---|---|
+| PATCH | `/api/v1/orders/:id/cancel` | order owner |
+| GET | `/api/v1/admin/orders` | admin |
+| GET | `/api/v1/admin/orders/:id` | admin |
+| PATCH | `/api/v1/admin/orders/:id/status` | admin |
+
+Orders follow `placed → confirmed → shipped → delivered`, with `cancelled` as a
+terminal state. Every transition is validated on the server and appended to a
+`statusHistory` array with a timestamp and optional note, which powers the
+customer timeline.
+
+Customers can cancel while an order is `placed` or `confirmed`. The conditional
+status update means only one request can win, stock is restored once, and repeat
+cancels are idempotent. A paid order is refunded through the provider (mock
+`rfnd_mock_*` ids locally); the payment moves `paid → refund_pending →
+refunded` and the order shows `paymentStatus: refunded`. If the gateway refund
+fails, the response sets `refundPending: true` and a later cancel retries it. A
+payment captured after cancellation is refunded automatically.
+
+Admins can list every order with `?page`, `?limit`, `?status` and `?userId`,
+plus a customer name/email summary, then confirm, ship or deliver. Confirming
+requires a paid order, shipping requires a carrier and tracking number (stored
+as `tracking`), and stale or skipped transitions return `409`.
+
 ### Client (Phase 4)
 
 Start the API first, then the client in a second terminal:
@@ -230,8 +257,10 @@ Client routes:
 | `/addresses` | signed in | Address book with default address management |
 | `/checkout` | signed in | Address selection, server quote and order placement |
 | `/orders` | signed in | Order history with pagination |
-| `/orders/:id` | signed in | Order detail with snapshots and the payment panel |
+| `/orders/:id` | signed in | Order detail with snapshots, payment, timeline, tracking and cancellation |
 | `/admin` | admin | Role-guarded connectivity check |
+| `/admin/orders` | admin | All orders with status filters and pagination |
+| `/admin/orders/:id` | admin | Admin order detail with status actions |
 
 The access token is kept in memory only; a reload restores the session through
 the httpOnly refresh cookie, and a 401 triggers one silent refresh and retry.

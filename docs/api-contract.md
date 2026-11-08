@@ -1,7 +1,7 @@
 # API Contract
 
 Each endpoint marked with a phase is implemented as that phase completes.
-Phases 1–7 are live.
+Phases 1–9 are live.
 
 ## Conventions
 
@@ -313,14 +313,97 @@ Rules and errors:
 - `GET /orders` returns `meta: { page, limit, total, totalPages }`; list and
   detail are scoped to the signed-in user, so another user's id returns `404`.
 
-## Orders — Phase 9 (planned)
+## Order lifecycle — Phase 9 (implemented)
+
+### Customer cancellation
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| PATCH | `/orders/:id/cancel` | auth | Cancel if status allows |
-| GET | `/admin/orders` | admin | All orders, filter by status/user |
-| GET | `/admin/orders/:id` | admin | Order detail |
-| PATCH | `/admin/orders/:id/status` | admin | Advance status |
+| PATCH | `/orders/:id/cancel` | auth (owner) | Cancel while status is `placed` or `confirmed` |
+
+Response `data: { order, refundPending }`. `refundPending` is `true` when the
+order was paid but the gateway refund call failed; the order is already
+`cancelled` and a later retry re-attempts the refund.
+
+Rules:
+
+- Only `placed` and `confirmed` orders can be cancelled. `shipped` and
+  `delivered` orders return `409`, and `cancelled` returns the same order
+  (idempotent).
+- The transition is a conditional `findOneAndUpdate` guarded by the current
+  status, so two simultaneous cancels cannot both restore stock or refund.
+- Stock is restored per line only after the transition succeeds.
+- A paid order is refunded through the provider and its `paymentStatus`
+  becomes `refunded`; if the gateway call fails, the payment is reset to `paid`,
+  `refundPending` is returned, and no refund id is stored.
+- A payment captured after cancellation is detected during verification and
+  refunded automatically.
+
+### Admin order management
+
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
+| GET | `/admin/orders` | admin | All orders with `?page`, `?limit` (max 50), `?status`, `?userId` |
+| GET | `/admin/orders/:id` | admin | Any order detail with customer summary |
+| PATCH | `/admin/orders/:id/status` | admin | Move an order to `confirmed`, `shipped`, `delivered` or `cancelled` |
+
+List response `data: { orders, meta }`. Admin orders are `OrderDTO` plus
+`customer: { id, name, email }`. The service resolves customers with one
+`User.find({ _id: { $in } })`, not one query per order.
+
+Status update body:
+
+```json
+{
+  "status": "shipped",
+  "carrier": "Delhivery",
+  "trackingNumber": "AWB-123456",
+  "note": "Handed to carrier"
+}
+```
+
+Allowed transitions:
+
+| From | To |
+|---|---|
+| `placed` | `confirmed`, `cancelled` |
+| `confirmed` | `shipped`, `cancelled` |
+| `shipped` | `delivered` |
+| `delivered` | none |
+| `cancelled` | none |
+
+Rules:
+
+- `confirmed` requires `paymentStatus: paid`, otherwise `409`.
+- `shipped` requires both `carrier` and `trackingNumber`; sending only one is a
+  validation `400`. The tracking object stores `{ carrier, trackingNumber,
+  updatedAt }`, and cancelling clears it.
+- `note` is optional and limited to 300 characters; it is stored on the
+  status-history entry.
+- Transitions are conditional updates guarded by the previous status, so a
+  stale admin screen cannot skip or repeat a step (`409`).
+- Cancelling from the admin surface reuses the customer cancellation service,
+  including stock restoration and refunds.
+
+`OrderDTO` (Phase 9) adds:
+
+```json
+{
+  "statusHistory": [
+    { "status": "placed", "at": "2026-11-09T01:35:00.000Z", "note": null },
+    { "status": "confirmed", "at": "2026-11-09T01:35:00.000Z", "note": "Payment received" },
+    { "status": "shipped", "at": "2026-11-09T01:41:00.000Z", "note": "Handed to carrier" }
+  ],
+  "tracking": {
+    "carrier": "Delhivery",
+    "trackingNumber": "AWB-PHASE9-001",
+    "updatedAt": "2026-11-09T01:41:00.000Z"
+  }
+}
+```
+
+The mapper guarantees a `placed` entry and the current status even for orders
+created before `statusHistory` existed.
 
 ## Payments — Phase 8 (implemented)
 
@@ -334,8 +417,9 @@ Rules and errors:
 
 `start` returns `data: { payment }`. The payment DTO contains `id`, `orderId`,
 `provider` (`mock` \| `razorpay`), `providerOrderId`, `providerPaymentId`,
-`amount`, `currency`, `status` (`created` \| `paid` \| `failed` \| `refunded`),
-`failureReason`, `attempts`, `paidAt`, `createdAt`, `updatedAt`, plus `keyId`
+`amount`, `currency`, `status` (`created` \| `paid` \| `failed` \|
+`refund_pending` \| `refunded`), `failureReason`, `attempts`, `paidAt`,
+`refundId`, `refundedAt`, `createdAt`, `updatedAt`, plus `keyId`
 (the public Razorpay key id, or `mock`). Secrets are never returned.
 
 `verify` expects the exact fields the Razorpay checkout handler receives:
@@ -408,7 +492,7 @@ Webhook:
 | 6 | `/cart/*`, `/wishlist/*` |
 | 7 | `/addresses/*`, `POST /orders/quote`, `POST /orders`, `GET /orders/*` |
 | 8 | `/payments/start`, `/payments/verify`, `/payments/abandon`, `/payments/mock/complete`, `/payments/webhook` |
-| 9 | cancel + admin order routes |
+| 9 | `PATCH /orders/:id/cancel`, `GET /admin/orders`, `GET /admin/orders/:id`, `PATCH /admin/orders/:id/status` |
 | 10 | `/coupons/*`, `/admin/*` |
 
 Any endpoint added outside this document must be recorded here in the same

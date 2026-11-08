@@ -22,6 +22,18 @@ export interface OrderAddressDTO {
   pincode: string;
 }
 
+export interface OrderStatusEventDTO {
+  status: OrderStatus;
+  at: Date;
+  note: string | null;
+}
+
+export interface OrderTrackingDTO {
+  carrier: string;
+  trackingNumber: string;
+  updatedAt: Date;
+}
+
 export interface OrderDTO {
   id: string;
   orderNumber: string;
@@ -35,8 +47,15 @@ export interface OrderDTO {
   couponCode: string | null;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  statusHistory: OrderStatusEventDTO[];
+  tracking: OrderTrackingDTO | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CancelOrderResult {
+  order: OrderDTO;
+  refundPending: boolean;
 }
 
 export interface OrderPricingDTO {
@@ -61,4 +80,29 @@ export interface OrderListResult {
     total: number;
     totalPages: number;
   };
+}
+
+export interface AdminOrderCustomerDTO {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface AdminOrderDTO extends OrderDTO {
+  customer: AdminOrderCustomerDTO;
+}
+
+export interface AdminOrderListResult {
+  orders: AdminOrderDTO[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface AdminStatusResult {
+  order: AdminOrderDTO;
+  refundPending: boolean;
 }

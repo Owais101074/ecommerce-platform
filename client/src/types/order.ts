@@ -22,6 +22,18 @@ export interface OrderAddress {
   pincode: string;
 }
 
+export interface OrderStatusEvent {
+  status: OrderStatus;
+  at: string;
+  note: string | null;
+}
+
+export interface OrderTracking {
+  carrier: string;
+  trackingNumber: string;
+  updatedAt: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -35,6 +47,8 @@ export interface Order {
   couponCode: string | null;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  statusHistory: OrderStatusEvent[];
+  tracking: OrderTracking | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,4 +75,34 @@ export interface OrderList {
     total: number;
     totalPages: number;
   };
+}
+
+export interface CancelOrderResult {
+  order: Order;
+  refundPending: boolean;
+}
+
+export interface AdminOrderCustomer {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface AdminOrder extends Order {
+  customer: AdminOrderCustomer;
+}
+
+export interface AdminOrderList {
+  orders: AdminOrder[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface AdminStatusResult {
+  order: AdminOrder;
+  refundPending: boolean;
 }

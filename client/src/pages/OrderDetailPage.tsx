@@ -3,7 +3,10 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, MapPin, Package, ShoppingBag } from 'lucide-react';
 import { getErrorMessage } from '@/api/errors';
 import { Container } from '@/components/layout/Container';
+import { CancelOrderCard } from '@/components/order/CancelOrderCard';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/order/OrderStatusBadge';
+import { OrderTimeline } from '@/components/order/OrderTimeline';
+import { OrderTrackingCard } from '@/components/order/OrderTrackingCard';
 import { PaymentPanel } from '@/components/payment/PaymentPanel';
 import { Alert } from '@/components/ui/Alert';
 import { buttonStyles } from '@/components/ui/button-styles';
@@ -152,6 +155,8 @@ export function OrderDetailPage() {
             </ul>
           </section>
 
+          <OrderTimeline order={order} />
+
           <section className="surface p-6 shadow-soft sm:p-7">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-50 text-accent-600">
@@ -177,6 +182,8 @@ export function OrderDetailPage() {
               </p>
             </div>
           </section>
+
+          {order.tracking && <OrderTrackingCard tracking={order.tracking} />}
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-28">
@@ -191,12 +198,14 @@ export function OrderDetailPage() {
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-700"
                 aria-hidden="true"
               />
-              Payment status updates once the server verifies a gateway response. Status tracking
-              and cancellation arrive in Phase 9.
+              Payment status updates once the server verifies a gateway response. You can cancel
+              while the order has not shipped.
             </p>
           </section>
 
           <PaymentPanel order={order} />
+
+          <CancelOrderCard order={order} />
 
           <section className="surface p-6 shadow-soft sm:p-7">
             <h2 className="font-display text-2xl font-semibold text-ink-900">Payment summary</h2>

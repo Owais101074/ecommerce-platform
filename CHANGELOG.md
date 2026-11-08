@@ -196,6 +196,33 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   modal dismiss and automatic order-query invalidation.
 - **Phase 8** — copy updated so checkout and order pages describe the real
   payment step instead of deferring it to a later phase.
+- **Phase 9** — order lifecycle `placed → confirmed → shipped → delivered`
+  plus `cancelled`, backed by a server-owned transition map and a
+  `statusHistory[]` of `{ status, at, note }` events.
+- **Phase 9** — `tracking` on the order stores `{ carrier, trackingNumber,
+  updatedAt }`; cancelling clears it and the detail page renders it.
+- **Phase 9** — `PATCH /orders/:id/cancel`: owner-scoped, allowed only for
+  `placed` and `confirmed`, conditional update so concurrent cancels cannot
+  double-restore stock, idempotent repeat cancel, stock restored per line.
+- **Phase 9** — paid-order cancellation triggers a provider refund through the
+  Razorpay Refunds REST API (or `rfnd_mock_*` in mock mode). The payment
+  atomically claims `paid → refund_pending → refunded`, resets to `paid` on
+  gateway failure, and repeat cancels retry a pending refund.
+- **Phase 9** — payment statuses gain `refund_pending`, and payments store
+  `refundId` and `refundedAt`; the order's `paymentStatus` becomes `refunded`.
+- **Phase 9** — late payment on a cancelled order (webhook/verify arriving after
+  cancellation) is detected and refunded automatically.
+- **Phase 9** — admin endpoints `GET /admin/orders` (pagination plus `status`
+  and `userId` filters), `GET /admin/orders/:id`, and
+  `PATCH /admin/orders/:id/status` with transition, payment and tracking
+  validation. Admin list responses include a customer summary resolved with one
+  batched user query.
+- **Phase 9** — client `OrderTimeline`, `OrderTrackingCard`, `CancelOrderCard`
+  and `AdminOrderActions`; order detail now shows history, tracking and a
+  two-step cancel with refund wording.
+- **Phase 9** — `/admin/orders` table with status filter chips and pagination,
+  and `/admin/orders/:id` with items, address snapshot, timeline, tracking,
+  customer details and status actions. Both sit behind `RequireAdmin`.
 
 ### Fixed
 
@@ -275,6 +302,29 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   returns `409`.
 - Abandonment is treated as a failed attempt, not a cancellation; the order stays
   placed and can be paid again.
+- Order transitions are a single server-owned map (`ALLOWED_TRANSITIONS`), so the
+  client never decides which status is legal next.
+- Every status change is recorded as an event with a timestamp and optional
+  note; the mapper backfills `placed` and the current status for older orders,
+  so the timeline is complete without a migration.
+- Cancellation is a conditional update guarded by the current status. Stock is
+  restored only by the request that actually performed the transition, which
+  prevents double restores without transactions.
+- Refunds use an atomic `paid → refund_pending → refunded` claim. A gateway
+  failure resets the payment to `paid` so a retry is possible, and a concurrent
+  cancel gets `409` instead of a second refund.
+- A mock refund id (`rfnd_mock_*`) is generated locally so the full refund state
+  machine is exercised without credentials.
+- Shipping requires both a carrier and a tracking number; the service refuses to
+  ship with partial tracking instead of storing an unusable reference.
+- `confirmed` is only reachable when `paymentStatus` is `paid`, so an admin
+  cannot confirm an unpaid order.
+- Admin order lists fetch customers with one `User.find({ _id: { $in } })`
+  instead of one query per row.
+- The admin screens live under `/admin/orders` rather than extending the
+  customer order routes, keeping role guards and payload shapes separate.
+- The client timeline renders only server-provided history; there is no
+  client-side status inference.
 
 ### Verified
 
@@ -358,6 +408,24 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Browser screenshots and scroll offsets could not be captured because the
   in-app browser reported a 0×0 hidden viewport; layout was verified through DOM
   snapshots and interaction checks instead.
+- Phase 9 API live checks (66): anonymous cancel `401`, unknown order `404`,
+  invalid body `400`, unpaid cancel with stock restore, repeat cancel
+  idempotent, nested cancels, paid cancel → `refund_pending` → `refunded` with a
+  mock refund id and `refundedAt`, payment and order `paymentStatus` updated,
+  late payment on a cancelled order auto-refunded, shipped and delivered
+  cancellation blocked with `409`, admin list auth/role guard, status and
+  `userId` filters, pagination meta, customer summaries, admin detail `404`,
+  unpaid confirm blocked, invalid transition `400`, stale transition race `409`,
+  admin confirm/ship with tracking/reject partial tracking/deliver, admin cancel
+  with stock restore and refund, and terminal-state guards.
+- Phase 9 browser checks: customer cancellation of an unpaid order shows
+  CANCELLED and a two-entry timeline; cancelling a paid order shows CANCELLED +
+  PAYMENT REFUNDED with placed → confirmed → cancelled history; the customer
+  cannot open another account's order; the admin order desk lists 17 orders
+  with customer, status, payment and total columns; the `shipped` filter writes
+  `?status=shipped` and renders the empty state; "Mark shipped" stays disabled
+  until carrier and tracking are supplied, then shows the SHIPPED timeline and
+  tracking card; "Mark delivered" completes the timeline. No console errors.
 - `typecheck`, `lint`, `format:check`, and `build` pass for both apps; the
   client build reports only the expected single-chunk size advisory.
 - `npm audit --omit=dev` reports 0 vulnerabilities; the remaining moderate
