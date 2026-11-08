@@ -1763,7 +1763,10 @@ remain unavailable because the in-app browser reports a 0×0 hidden viewport.
 | `94c4953` | docs: record phase 6 in project guide and API contract |
 | `43864c0` | docs: correct phase 6 concepts note |
 | `84d6943` | feat(storefront): add checkout, addresses and order placement |
+| `e08414d` | docs: record phase 7 checkout and order flow |
 | `22296a9` | feat(payments): add razorpay order flow with signed verification |
+| `26213ca` | docs: record phase 8 payment integration |
+| `fefea39` | feat(orders): add lifecycle, cancellation refunds and admin order desk |
 
 ---
 
