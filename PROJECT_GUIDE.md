@@ -1955,6 +1955,9 @@ browser reports a 0×0 hidden viewport.
 | `fefea39` | feat(orders): add lifecycle, cancellation refunds and admin order desk |
 | `609a4e5` | docs: record phase 9 in project guide                                  |
 | `9a0fd99` | feat(admin): add dashboard, coupons and catalogue management           |
+| `6b273d5` | docs: record phase 10 in project guide                                 |
+| `1016a8c` | feat(testing): add reviews, security hardening and test suites         |
+| `d32c446` | docs: record phase 11 testing and security                             |
 
 ---
 
