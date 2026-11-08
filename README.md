@@ -36,7 +36,7 @@ ecommerce-platform/
 | 5 | Customer shopping experience | Complete |
 | 6 | Cart and wishlist | Complete |
 | 7 | Checkout, addresses and orders | Complete |
-| 8 | Payments | Not started |
+| 8 | Payments | Complete |
 | 9 | Order management | Not started |
 | 10 | Admin dashboard | Not started |
 | 11 | Testing and security | Not started |
@@ -163,7 +163,34 @@ Checkout totals are computed on the server in integer paise: GST is 18% and
 inclusive (`round(subtotal × 18 / 118)`), shipping is free from ₹999 (99,900
 paise) and ₹49 (4,900 paise) below that. Orders store item and address snapshots,
 decrement stock atomically, and clear the cart. Coupon codes are rejected until
-Phase 10; payment stays pending until Phase 8.
+Phase 10. Orders start with `paymentStatus: pending`; payment is completed from
+the order detail page.
+
+### Payments (Phase 8)
+
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/v1/payments/start` | access token |
+| POST | `/api/v1/payments/verify` | access token |
+| POST | `/api/v1/payments/abandon` | access token |
+| POST | `/api/v1/payments/mock/complete` | access token, mock mode only |
+| POST | `/api/v1/payments/webhook` | public, signature required |
+
+`POST /payments/start` creates one payment document per order and returns the
+gateway order id, the amount in paise and the public key id. Repeating it while
+an attempt is open returns the same gateway order with no new charge attempt.
+`POST /payments/verify` checks the HMAC signature of
+`<gatewayOrderId>|<gatewayPaymentId>`, marks the payment paid and moves the order
+to `confirmed`. `abandon` records a dismissed or failed attempt as `failed`, and
+a new attempt resets the payment to `created` with `attempts + 1`.
+
+Set `PAYMENT_MODE=razorpay` with `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and
+`RAZORPAY_WEBHOOK_SECRET` to call the real Razorpay Orders API. The default
+`PAYMENT_MODE=mock` simulates gateway order creation locally while still signing
+and verifying with the same HMAC code, so no credentials are needed in
+development. Production configuration rejects mock mode. The webhook mount reads
+the raw request body before `express.json()` so the signature is checked over the
+exact bytes Razorpay signed. Payment secrets live only in `server/.env`.
 
 ### Client (Phase 4)
 
@@ -203,7 +230,7 @@ Client routes:
 | `/addresses` | signed in | Address book with default address management |
 | `/checkout` | signed in | Address selection, server quote and order placement |
 | `/orders` | signed in | Order history with pagination |
-| `/orders/:id` | signed in | Order detail with item and address snapshots |
+| `/orders/:id` | signed in | Order detail with snapshots and the payment panel |
 | `/admin` | admin | Role-guarded connectivity check |
 
 The access token is kept in memory only; a reload restores the session through

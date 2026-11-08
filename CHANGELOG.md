@@ -167,6 +167,35 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   snapshot, status cards and payment summary.
 - **Phase 7** — checkout link from the cart, order/address links in the account
   page and authenticated footer, and `RequireAuth` guards on all new routes.
+- **Phase 8** — `PAYMENT_MODE` (`mock` | `razorpay`), `RAZORPAY_KEY_ID`,
+  `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` env validation; production
+  must use `razorpay` and supply a key id.
+- **Phase 8** — `payments` collection with a unique `orderId` (one payment per
+  order), provider order/payment ids, integer paise amount, status, failure
+  reason, attempt count and the raw gateway payload.
+- **Phase 8** — `payment.provider.ts` calls the Razorpay Orders REST API with
+  Basic auth through Node `fetch` (no SDK), validates the echoed amount and
+  currency, and provides HMAC-SHA256 payment/webhook signatures with
+  `timingSafeEqual` comparisons.
+- **Phase 8** — local `mock` provider generates `order_mock_*` ids but signs and
+  verifies a real HMAC, so the client always exercises the real
+  `POST /payments/verify` path.
+- **Phase 8** — `POST /payments/start` (idempotent while an attempt is open),
+  `POST /payments/verify`, `POST /payments/abandon`, `POST /payments/mock/complete`
+  and the public signed `POST /payments/webhook`.
+- **Phase 8** — webhook middleware mounts `express.raw()` before `express.json()`
+  so the signature is checked over the exact bytes; unknown orders and amount
+  mismatches are acknowledged without changing state.
+- **Phase 8** — a verified payment sets `paymentStatus: paid` and moves a
+  `placed` order to `confirmed`; failed, declined or abandoned attempts set
+  `paymentStatus: failed`. Retrying starts a new gateway order and increments
+  `attempts`. Paid orders reject new attempts with `409`.
+- **Phase 8** — client payment types, API file and TanStack Query hooks; the
+  order detail page gains a `PaymentPanel` with Razorpay Checkout.js loaded on
+  demand, mock success/failure controls, retry after failure, abandonment on
+  modal dismiss and automatic order-query invalidation.
+- **Phase 8** — copy updated so checkout and order pages describe the real
+  payment step instead of deferring it to a later phase.
 
 ### Fixed
 
@@ -223,7 +252,29 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Order numbers use the UTC date plus six random hex characters, backed by a
   unique index.
 - Coupon codes are rejected until Phase 10 instead of silently ignoring them.
-- Payment stays `pending` in Phase 7; Phase 8 adds Razorpay and verification.
+- Payment stays `pending` when an order is placed; Phase 8 adds gateway creation,
+  signature verification and webhooks.
+- Payments are recorded in their own collection with a unique `orderId`, so the
+  same order can never hold two payment documents; retries reuse the document
+  and replace the provider order id.
+- The Razorpay REST API is called with Node's built-in `fetch` and Basic auth
+  instead of adding the SDK dependency.
+- `PAYMENT_MODE` is explicit. Mock mode is allowed only outside production and
+  still signs/verifies real HMACs; production configuration refuses to boot
+  without `razorpay` mode and a key id.
+- The webhook route is mounted before `express.json()` because a parsed and
+  re-serialised body would no longer match the signature.
+- Signatures are compared with `timingSafeEqual` after a length check, and the
+  webhook amount/currency are checked against the stored payment before any
+  order state changes.
+- Webhooks for unknown orders or mismatched amounts return `200` without
+  changing data, so Razorpay does not retry forever and a forged payload cannot
+  confirm an order.
+- Payment verification is idempotent: replaying the same signed response returns
+  the same paid payment, while a different payment id for the same gateway order
+  returns `409`.
+- Abandonment is treated as a failed attempt, not a cancellation; the order stays
+  placed and can be paid again.
 
 ### Verified
 
@@ -285,11 +336,29 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   snapshots, order history with pagination counts, empty-cart checkout state,
   guest redirects from `/orders` and `/checkout` to `/login`, and no console
   errors.
-- `typecheck`, `lint`, `format:check`, and `build` pass for both apps; the
-  client build reports only the expected single-chunk size advisory.
-- `typecheck`, `lint`, `format:check`, and `build` pass for both apps.
+- Phase 8 API live checks (60): start requires auth, validates the order id and
+  returns `404` for unknown orders; creates one payment with the mock provider,
+  correct amount/currency and attempt 1; repeat start is idempotent; another
+  user cannot start or verify the payment; wrong and malformed signatures return
+  `400` and leave the order pending; mock completion returns a signed credential
+  pair; tampering with the payment id breaks the signature; a valid signature
+  marks the payment paid and the order confirmed; repeat verification is
+  idempotent; a paid order returns `409` on start and ignores abandonment; mock
+  failure and abandonment store reasons and mark the order failed; retries create
+  a fresh provider order, increment attempts and return the order to pending;
+  webhooks reject missing/invalid signatures and malformed JSON, ignore unknown
+  orders and amount mismatches, handle `payment.failed`, mark `payment.captured`
+  as paid/confirmed, and stay idempotent on replay.
+- Phase 8 browser checks: login and order detail render the payment panel, mock
+  success moves the badges to CONFIRMED/PAID and swaps in the paid message with
+  a "Payment received" toast, mock failure shows PAYMENT FAILED with "Retry
+  payment", retrying opens a new mock session, and cancelling that attempt
+  returns to the failed state. The only console entry was the expected guest
+  `/auth/refresh` 401.
 - Browser screenshots and scroll offsets could not be captured because the
   in-app browser reported a 0×0 hidden viewport; layout was verified through DOM
-  snapshots, computed styles, and interaction checks instead.
+  snapshots and interaction checks instead.
+- `typecheck`, `lint`, `format:check`, and `build` pass for both apps; the
+  client build reports only the expected single-chunk size advisory.
 - `npm audit --omit=dev` reports 0 vulnerabilities; the remaining moderate
   advisories are in ESLint's `minimatch` dependency chain (dev only).

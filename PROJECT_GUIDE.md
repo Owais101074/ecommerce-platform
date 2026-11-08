@@ -4,7 +4,7 @@
 > how it is architected, what each phase delivers, how every important workflow
 > runs, and how to explain it to anyone.
 >
-> Last updated: 2026-11-07 · Branch: `main` · Latest phase: Phase 7
+> Last updated: 2026-11-09 · Branch: `main` · Latest phase: Phase 8
 > Repository: https://github.com/Owais101074/ecommerce-platform (public)
 
 ---
@@ -38,9 +38,9 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Database | MongoDB 8.2 + Mongoose 9 |
 | Frontend | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
 | Tooling | Git, GitHub CLI, ESLint 10, Prettier 3, Postman |
-| Current phase | Phase 7 complete (checkout, addresses and orders), awaiting review |
-| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7 |
-| Next phase | Phase 8 — Payment Integration |
+| Current phase | Phase 8 complete (Razorpay/mock payments, verification, webhook), awaiting review |
+| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8 |
+| Next phase | Phase 9 — Order Management |
 | API base | `http://localhost:5000/api/v1` |
 | Client base | `http://localhost:5173` |
 | Database (dev) | `mongodb://127.0.0.1:27017/ecommerce_dev` |
@@ -88,13 +88,16 @@ previous phase is reviewed and approved with the exact phrase
 
 If asked "what is finished right now?", answer:
 
-> "Phases 0–6 are complete: the repository and architecture; the
+> "Phases 0–7 are complete: the repository and architecture; the
 > Express/TypeScript foundation; authentication and RBAC with 18 passing checks;
 > the product/category catalogue with 34 checks; the React foundation with a
-> storefront design refresh; the customer shopping experience; and cart and
-> wishlist with server-side pricing. Phase 7 adds checkout, addresses and
-> orders with 46 passing API checks, so the storefront can now take an order
-> end to end before payment."
+> storefront design refresh; the customer shopping experience; cart and wishlist
+> with server-side pricing; and checkout with addresses, orders and order history
+> with 46 passing API checks. Phase 8 wires payments: one payment record per
+> order, Razorpay order creation, HMAC signature verification, a raw-body signed
+> webhook, failure/abandon handling and a payment panel on the order page, with
+> 60 passing API checks. Because no real merchant credentials are used in
+> development, an explicit mock provider signs with the same HMAC code."
 
 ---
 
@@ -360,6 +363,16 @@ server/
     │   │   ├── coupon.service.ts       Phase 7 coupon hook
     │   │   ├── order.types.ts
     │   │   └── order.validation.ts
+    │   ├── payments/
+    │   │   ├── payment.routes.ts
+    │   │   ├── payment.webhook.routes.ts   raw-body mount, no auth
+    │   │   ├── payment.controller.ts
+    │   │   ├── payment.service.ts
+    │   │   ├── payment.provider.ts         Razorpay REST + HMAC + mock mode
+    │   │   ├── payment.model.ts
+    │   │   ├── payment.mapper.ts
+    │   │   ├── payment.types.ts
+    │   │   └── payment.validation.ts
     │   └── health/
     │       ├── health.routes.ts
     │       └── health.controller.ts
@@ -400,7 +413,8 @@ client/
     │   ├── catalog.api.ts    products, categories, admin ping
     │   ├── cart.api.ts       cart + wishlist endpoints
     │   ├── address.api.ts    address CRUD + set default
-    │   └── order.api.ts      quote, place order, list, detail
+    │   ├── order.api.ts      quote, place order, list, detail
+    │   └── payment.api.ts    start, verify, abandon, mock complete
     ├── components/
     │   ├── layout/           Header, Footer, Container, AppLayout,
     │   │                     AuthLayout, ScrollManager
@@ -408,6 +422,7 @@ client/
     │   │                     AddToCartButton, WishlistButton, QuantityStepper
     │   ├── address/          AddressForm, AddressCard
     │   ├── order/            OrderStatusBadge
+    │   ├── payment/          PaymentPanel (pay, retry, mock outcomes)
     │   └── ui/               Button, button-styles, Input, PasswordInput,
     │                         Select, Alert, Badge, Spinner, Skeleton,
     │                         ErrorState, PageLoader, Pagination, Breadcrumbs,
@@ -415,14 +430,15 @@ client/
     ├── features/auth/        auth-context, AuthProvider, useAuth
     ├── hooks/                useProducts, useCategories, useAdminPing,
     │                         useCart, useWishlist, useAddresses, useOrders,
-    │                         useDocumentTitle
-    ├── lib/                  env, queryClient, format, constants
+    │                         usePayment, useDocumentTitle
+    ├── lib/                  env, queryClient, format, constants, razorpay
     ├── pages/                Home, Login, Register, Account, Admin, Products,
     │                         ProductDetail, Category, Cart, Wishlist,
     │                         Addresses, Checkout, Orders, OrderDetail,
     │                         NotFound, RouteError
     ├── routes/               router.tsx, guards.tsx
-    ├── types/                api, auth, catalog, cart, address, order
+    ├── types/                api, auth, catalog, cart, address, order,
+    │                         payment, razorpay.d.ts
     ├── App.tsx
     ├── index.css             Tailwind + @theme tokens
     ├── main.tsx
@@ -545,7 +561,7 @@ Catalogue rules:
 - Product responses include a category summary `{ id, name, slug }`.
 - Ratings are stored aggregates; actual review documents arrive in Phase 11.
 
-### 7.3 Implemented — `addresses` and `orders`
+### 7.3 Implemented — `addresses`, `orders` and `payments`
 
 `addresses`:
 
@@ -599,11 +615,36 @@ Index: `(userId, createdAt)` plus a unique index on `orderNumber`. No stock or
 price is read from the client; the cart and catalogue are read again when the
 order is placed.
 
+`payments`:
+
+| Field | Type | Notes |
+|---|---|---|
+| `_id` | ObjectId | Primary key |
+| `orderId` | ObjectId | reference to `orders`, **unique** |
+| `userId` | ObjectId | reference to `users` |
+| `provider` | enum | `mock` \| `razorpay` |
+| `providerOrderId` | string | unique; Razorpay order id or `order_mock_*` |
+| `providerPaymentId` | string \| null | set when the signature verifies |
+| `amount` | number | integer paise, copied from the order total |
+| `currency` | string | `INR` |
+| `status` | enum | `created` → `paid` / `failed` \| `refunded` |
+| `failureReason` | string \| null | e.g. `simulated_failure`, `abandoned`, gateway text |
+| `attempts` | number | starts at 1; increments on retry |
+| `rawPayload` | Mixed | verification or webhook body for audit |
+| `paidAt` | Date \| null | when the payment completed |
+| `createdAt` / `updatedAt` | Date | timestamps |
+
+Index: `(userId, createdAt)` plus unique indexes on `orderId` and
+`providerOrderId`. The unique `orderId` enforces one payment document per order;
+a retry reuses that document, replaces the provider order id, clears the old
+payment id and increments `attempts`. There is no second source of truth for
+whether an order is paid: the order's `paymentStatus` is updated only after a
+valid signature or signed webhook.
+
 ### 7.4 Planned collections
 
 | Collection | Key fields | Relationships / indexes |
 |---|---|---|
-| `payments` | orderId, provider, providerOrderId, providerPaymentId, amount, status, rawPayload | orderId unique |
 | `reviews` | userId, productId, rating, comment | unique (userId, productId) |
 | `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
 
@@ -630,6 +671,8 @@ Every document reference is by ObjectId. Product/category public URLs use slugs.
 - **Soft delete** for users and products so historic orders stay valid.
 - **Unique indexes** enforce email, slug, coupon code, and one review per user
   per product at the database level, not only in application code.
+- **One payment per order:** `payments.orderId` is unique, and order
+  `paymentStatus` changes only after a valid HMAC signature or signed webhook.
 
 ---
 
@@ -690,12 +733,16 @@ invalid token, 403 wrong role, 404 not found, 409 duplicate, 422 business rule
 | POST | `/orders` | access token | place order from cart + address |
 | GET | `/orders` | access token | own order history, paginated |
 | GET | `/orders/:id` | access token | own order detail |
+| POST | `/payments/start` | access token | create/reuse a payment attempt, return gateway order + key |
+| POST | `/payments/verify` | access token | verify HMAC, mark payment paid and order confirmed |
+| POST | `/payments/abandon` | access token | record a dismissed attempt as failed |
+| POST | `/payments/mock/complete` | access token | mock mode only; signed success or simulated failure |
+| POST | `/payments/webhook` | public + signature | raw-body gateway events (`payment.captured`, `payment.failed`) |
 
 ### 8.3 Planned endpoints by phase
 
 | Phase | Endpoints |
 |---|---|
-| 8 | `/payments/orders`, `/payments/verify`, `/payments/webhook` |
 | 9 | cancel order, admin order routes |
 | 10 | `/coupons/*`, `/admin/*` |
 
@@ -1062,16 +1109,75 @@ cache invalidation after a mutation that changes several resources.
 
 ---
 
-### Phase 8 — Payment Integration — **PLANNED**
+### Phase 8 — Payment Integration — **DONE**
 
 **Goal:** take money safely.
 
-**Will deliver:**
-- Razorpay order creation for an app order.
-- Signature verification on the client response.
-- Webhook endpoint with raw body and signature validation.
-- Failed and abandoned payment handling.
-- Idempotent payment records, one per order.
+**Delivered:**
+- Env validation for `PAYMENT_MODE` (`mock` | `razorpay`), `RAZORPAY_KEY_ID`,
+  `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`; production refuses to
+  start in mock mode or without a key id.
+- `payments` collection with a unique `orderId`, unique `providerOrderId`,
+  provider payment id, integer paise amount, status, failure reason, attempt
+  count, paid timestamp and raw payload.
+- `payment.provider.ts`: Razorpay Orders REST via Node `fetch` with Basic auth,
+  request/response amount validation, mock order ids in local development, and
+  HMAC-SHA256 helpers for payment and webhook signatures. Every comparison uses
+  a length check plus `timingSafeEqual`.
+- `POST /payments/start`: owner-scoped, rejects paid orders with `409`, reuses an
+  open attempt, otherwise creates a gateway order and creates/reuses the payment
+  document. Returns the public key id, amount, currency, provider order id and
+  attempt count.
+- `POST /payments/verify`: recomputes
+  `HMAC_SHA256("<orderId>|<paymentId>", keySecret)`, rejects mismatches with
+  `400`, marks the payment `paid`, sets `paidAt`, and moves a `placed` order to
+  `confirmed`. Replaying the same signed pair is idempotent; a different payment
+  id for the same gateway order is `409`.
+- `POST /payments/abandon`: records `failed` with reason `abandoned`, so a closed
+  checkout sheet or failed attempt does not leave a dangling payment.
+- `POST /payments/mock/complete`: only available in mock mode. Returns a real
+  HMAC signature for a generated `pay_mock_*` id, so the client always calls the
+  real verification endpoint; `failure` marks the payment failed with
+  `simulated_failure`.
+- `POST /payments/webhook`: mounted with `express.raw()` **before**
+  `express.json()`, verified against `RAZORPAY_WEBHOOK_SECRET` over the exact
+  bytes. `payment.captured` / `order.paid` confirm the payment, `payment.failed`
+  marks it failed. Unknown orders, unknown events and amount/currency mismatches
+  return `200` without changing state.
+- Client: payment types, `payment.api.ts`, `useStartPayment`,
+  `useVerifyPayment`, `useAbandonPayment`, `useMockCompletePayment`, a lazy
+  Checkout.js loader, typings for the Razorpay global, and a `PaymentPanel` on
+  `/orders/:id` with pay/retry, mock success/failure, cancel attempt, and order
+  query invalidation. Dismissing the real checkout calls abandon.
+
+**Verification:** 60 live API checks passed: auth/validation boundaries,
+idempotent start, provider/amount/currency fields, cross-user `404` on start and
+verify, wrong/malformed signature `400` with the order left pending, signed mock
+completion, tampered payment id rejection, successful verify → paid/confirmed,
+replayed verify, paid order `409`, abandonment no-op on paid, simulated failure
+→ failed, retry with a new provider order and `attempts + 1`, abandon and second
+abandon, webhook missing/invalid signature and malformed JSON `400`, unknown
+order and amount mismatch ignored, `payment.failed` handled,
+`payment.captured` → paid/confirmed, and idempotent webhook replay. Browser
+checks: order page renders the panel, mock success flips the badges to
+CONFIRMED/PAID and shows the paid message and toast, mock failure shows PAYMENT
+FAILED with Retry, retrying opens a new session, and cancelling returns to
+failed. No React console errors. `typecheck`, `lint`, `format:check` and `build`
+pass for both apps.
+
+**Be able to explain:** why the server never trusts the browser's word that a
+payment succeeded, what the signature is computed over and where the secret
+lives, why the webhook needs the raw body, why the webhook is public yet safe,
+why there is one payment document per order and how retries reuse it, why an
+unknown webhook order is acknowledged instead of rejected, why amounts are
+compared against the stored payment, and why `timingSafeEqual` is used instead
+of `===`.
+
+**Key concepts learned:** gateway order vs app order, HMAC-SHA256
+signatures, constant-time comparison, idempotency keys in practice, webhook
+ordering and retries, raw-body middleware placement, separating public key ids
+from secrets, explicit development providers that still exercise production code
+paths, and mutation-driven cache invalidation across related resources.
 
 ---
 
@@ -1084,7 +1190,7 @@ cache invalidation after a mutation that changes several resources.
 - Cancellation rules per status.
 - Refund workflow linked to payment status.
 - Admin order listing and status updates.
-- Customer status timeline and tracking details on the Phase 7 order pages.
+- Customer status timeline and tracking details on the existing order pages.
 
 ---
 
@@ -1501,6 +1607,21 @@ added by this refresh was the existing session bootstrap; no endpoints changed.
 browser still reports a 0×0 hidden viewport, so checks used DOM snapshots,
 DOM-triggered interactions, network and console logs.
 
+### Verified Phase 8 results (60 API checks + browser)
+
+| Area | Checks |
+|---|---|
+| Boundaries | no token `401`, invalid order id `400`, unknown order `404`, cross-user start/verify `404` |
+| Creation | mock provider, amount/currency from the order, `keyId`, `attempts: 1`, no payment id before capture, repeat start reuses the same document/provider order |
+| Signatures | wrong signature `400`, malformed signature `400`, order unchanged, mock completion returns a 64-hex signature, tampered payment id `400` |
+| Success | valid verify `200`, payment `paid`, provider payment id stored, order `paid` + `confirmed`, replay idempotent, paid order start `409`, abandon no-op |
+| Failure | mock failure → `failed` / `simulated_failure`, order failed, retry new provider order + `attempts: 2` + order pending, abandon → `failed` / `abandoned`, idempotent abandon, third attempt allowed |
+| Webhook | missing/invalid signature `400`, signed malformed JSON `400`, unknown order ignored, amount mismatch ignored, `payment.failed` handled, `payment.captured` → paid/confirmed, replay idempotent |
+| Browser | payment panel, mock success → CONFIRMED/PAID + toast, failure → PAYMENT FAILED + Retry, retry opens a session, cancel returns to failed, no React console errors |
+
+Screenshots remain unavailable because the in-app browser reports a 0×0 hidden
+viewport.
+
 ---
 
 ## 12. Engineering workflow
@@ -1546,6 +1667,7 @@ DOM-triggered interactions, network and console logs.
 | `94c4953` | docs: record phase 6 in project guide and API contract |
 | `43864c0` | docs: correct phase 6 concepts note |
 | `84d6943` | feat(storefront): add checkout, addresses and order placement |
+| `22296a9` | feat(payments): add razorpay order flow with signed verification |
 
 ---
 
@@ -1791,6 +1913,42 @@ default unsets others with one `updateMany`, the last remaining address cannot
 be un-defaulted, and deleting the default promotes the oldest remaining one. No
 unique partial index is required because all writes go through the service.
 
+**Q54. Why can't the client simply say "payment succeeded"?**  
+Any request from a browser can be forged. The gateway signs
+`<razorpay_order_id>|<razorpay_payment_id>` with a secret that only the server
+and gateway know. The server recomputes the signature and only then marks the
+payment and order paid.
+
+**Q55. Why mount the webhook before `express.json()`?**  
+The signature covers the exact request bytes. `express.json()` parses and
+re-serialises the JSON, which can change whitespace and key order, so the
+recomputed HMAC would no longer match. `express.raw()` keeps the body as a
+`Buffer` for verification.
+
+**Q56. The webhook is public. Why is that safe?**  
+It has no user token because Razorpay calls it, not a browser. Security comes
+from the HMAC over the raw body using `RAZORPAY_WEBHOOK_SECRET`, plus the
+amount/currency check against the stored payment. Payloads without a valid
+signature get `400`.
+
+**Q57. Why one payment document per order?**  
+The unique `orderId` index makes double charging structurally impossible to
+represent. A retry reuses the document, swaps the provider order id, clears the
+old payment id and increments `attempts`, which also gives an audit trail of how
+many attempts happened.
+
+**Q58. Why `timingSafeEqual` instead of `===` for signatures?**  
+String comparison can return as soon as bytes differ, leaking timing
+information that helps an attacker guess a signature. `timingSafeEqual` compares
+in constant time; the explicit length check avoids its exception on unequal
+lengths.
+
+**Q59. What happens if the webhook arrives before or after `/verify`?**  
+Both paths call the same `confirmPayment` helper with guarded updates
+(`status: { $ne: 'paid' }`), so whichever arrives first wins and the second is a
+no-op. A later `payment.failed` cannot downgrade a paid payment because the
+failure update also excludes paid documents.
+
 ### "Explain the project in a deeper 2 minutes"
 
 > "The repo is a monorepo with a React client and an Express API. The API is
@@ -1841,6 +1999,13 @@ unique partial index is required because all writes go through the service.
 | GST-inclusive | Tax already contained in the quoted price (`round(total × 18 / 118)`) |
 | Compensating rollback | Undoing earlier successful writes when a later step fails |
 | Default address | The single address pre-selected at checkout |
+| Gateway order | The provider's own order object (`order_*`) that a checkout is opened against |
+| HMAC | Keyed hash used as a signature; here SHA-256 over a known payload |
+| Signature | Hex digest proving the payload came from someone holding the secret |
+| Webhook | Server-to-server callback sent by the gateway after an event |
+| Raw body | The unparsed request bytes, required to verify a signature |
+| Timing-safe comparison | Comparing secrets in constant time to avoid leaking information |
+| Mock provider | Local payment simulator that keeps the real signing and verification code paths |
 | `select: false` | Mongoose field hidden unless explicitly requested |
 | Hydrated document | Mongoose document instance, not a plain object |
 | CSRF | Cross-site request forgery |
@@ -1854,7 +2019,9 @@ unique partial index is required because all writes go through the service.
 
 | Area | Limitation | Plan |
 |---|---|---|
-| Payments | Orders are always created with `paymentStatus: pending`; no gateway is wired | Phase 8 |
+| Payments | No real merchant credentials are used here, so development runs `PAYMENT_MODE=mock`; the `razorpay` path is coded but not exercised against the live API | Swap test keys into `server/.env` and set `PAYMENT_MODE=razorpay` |
+| Refunds | `refunded` exists in the payment enum but no refund workflow is built | Phase 9 |
+| Webhook retries | The endpoint is idempotent but no queue/backoff is added for failed processing | Phase 12 |
 | Order lifecycle | Only the `placed` status exists; no cancellation or tracking timeline | Phase 9 |
 | Coupons | The hook rejects every code; no coupon documents or discounts | Phase 10 |
 | Stock safety | Conditional updates with rollback, not MongoDB transactions | Transactions need a replica set; document in Phase 12 |
@@ -1880,9 +2047,9 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 8 — Payment Integration: Razorpay order creation for a placed order,
-signature verification, a raw-body webhook with signature validation, failure
-and abandonment handling, and one idempotent payment record per order.
+Phase 9 — Order Management: status transitions
+(placed → confirmed → shipped → delivered), cancellation rules per status, a
+refund workflow linked to payment status, and admin order listing and updates.
 
 Do not start until the reviewer explicitly says:
 

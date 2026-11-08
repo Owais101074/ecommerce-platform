@@ -322,13 +322,70 @@ Rules and errors:
 | GET | `/admin/orders/:id` | admin | Order detail |
 | PATCH | `/admin/orders/:id/status` | admin | Advance status |
 
-## Payments — Phase 8
+## Payments — Phase 8 (implemented)
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| POST | `/payments/orders` | auth | Create Razorpay order for an app order |
-| POST | `/payments/verify` | auth | Verify signature, mark paid |
-| POST | `/payments/webhook` | public (signed) | Gateway webhook; raw body required |
+| POST | `/payments/start` | auth | Create or reuse a payment attempt for `{ orderId }` |
+| POST | `/payments/verify` | auth | Verify the gateway response and mark the order paid |
+| POST | `/payments/abandon` | auth | Mark the open attempt failed when checkout is dismissed |
+| POST | `/payments/mock/complete` | auth, mock mode only | `{ orderId, outcome: "success" \| "failure" }` |
+| POST | `/payments/webhook` | public + `x-razorpay-signature` | Raw-body gateway events |
+
+`start` returns `data: { payment }`. The payment DTO contains `id`, `orderId`,
+`provider` (`mock` \| `razorpay`), `providerOrderId`, `providerPaymentId`,
+`amount`, `currency`, `status` (`created` \| `paid` \| `failed` \| `refunded`),
+`failureReason`, `attempts`, `paidAt`, `createdAt`, `updatedAt`, plus `keyId`
+(the public Razorpay key id, or `mock`). Secrets are never returned.
+
+`verify` expects the exact fields the Razorpay checkout handler receives:
+
+```json
+{
+  "razorpay_order_id": "order_...",
+  "razorpay_payment_id": "pay_...",
+  "razorpay_signature": "<64-character hex>"
+}
+```
+
+The server recomputes
+`HMAC_SHA256("<razorpay_order_id>|<razorpay_payment_id>", RAZORPAY_KEY_SECRET)`
+and compares in constant time.
+
+Rules and errors:
+
+- One payment document per order (`orderId` unique). Repeating `start` while
+  `status: created` returns the same `providerOrderId` and keeps `attempts`.
+- A paid order or a cancelled order cannot start a payment → `409`.
+- Another user's order or payment → `404` (queries are `userId`-scoped).
+- Invalid or malformed signature → `400 Payment signature verification failed`
+  (or validation `400`); the order stays pending.
+- Valid signature: payment `paid`, `paidAt` set, order `paymentStatus: paid`,
+  and a `placed` order moves to `confirmed`. Replaying the same signed pair is
+  idempotent; a different payment id for the same gateway order → `409`.
+- `abandon` and simulated failure set payment `failed` with
+  `failureReason: abandoned` / `simulated_failure` and order
+  `paymentStatus: failed`; a paid payment is never downgraded.
+- Retrying after failure creates a new provider order, increments `attempts` and
+  puts the order back to `paymentStatus: pending`.
+- `mock/complete` returns `400`/`404` outside mock mode. On success it returns
+  `credentials` signed with the same key-secret HMAC, so the client still calls
+  `verify`. On failure it returns the failed payment and no credentials.
+- Success responses are `200`; `start` is idempotent rather than `201`.
+
+Webhook:
+
+- Mounted with `express.raw({ type: "application/json" })` before
+  `express.json()`, so the signature is checked over the exact bytes.
+- Signature header: `x-razorpay-signature`, HMAC-SHA256 of the raw body using
+  `RAZORPAY_WEBHOOK_SECRET`.
+- `payment.captured` and `order.paid` confirm the payment; `payment.failed` marks
+  it failed.
+- Unknown orders, unsupported events and amount/currency mismatches return
+  `200 { handled: false }` without state changes.
+- Missing/invalid signature or malformed JSON → `400`.
+- Response: `data: { handled: boolean }`.
+- Replays are safe: updates are guarded with `status: { $ne: "paid" }`.
 
 ## Admin — Phase 10
 
@@ -350,7 +407,7 @@ Rules and errors:
 | 3 | `/categories/*`, `/products/*` |
 | 6 | `/cart/*`, `/wishlist/*` |
 | 7 | `/addresses/*`, `POST /orders/quote`, `POST /orders`, `GET /orders/*` |
-| 8 | `/payments/*` |
+| 8 | `/payments/start`, `/payments/verify`, `/payments/abandon`, `/payments/mock/complete`, `/payments/webhook` |
 | 9 | cancel + admin order routes |
 | 10 | `/coupons/*`, `/admin/*` |
 

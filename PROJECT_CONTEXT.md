@@ -5,10 +5,10 @@ every phase. If chat context is lost, this file is the source of truth.
 For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
-**Last updated:** 2026-11-07
-**Current phase:** Phase 7 — Checkout and Address Management (complete, awaiting review)
-**Latest work:** address book, server-priced checkout quote, order placement with snapshots, order history/detail
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7
+**Last updated:** 2026-11-09
+**Current phase:** Phase 8 — Payment Integration (complete, awaiting review)
+**Latest work:** Razorpay/mock payment creation, HMAC verification, signed webhook, failure/abandon handling and the order-page payment panel
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -53,7 +53,7 @@ ecommerce-platform/
 ├── client/                       React app (Phase 4)
 │   └── src/
 │       ├── api/                  http (axios) + session token store + errors + endpoint files
-│       ├── components/           ui/, layout/, product/
+│       ├── components/           ui/, layout/, product/, address/, order/, payment/
 │       ├── features/             auth/ (context, provider, hook)
 │       ├── hooks/                TanStack Query wrappers
 │       ├── lib/                  env, queryClient, formatters, constants
@@ -120,6 +120,10 @@ ecommerce-platform/
 | Address default | Exactly one default; first address auto-default; delete promotes oldest | Predictable checkout pre-selection without a second source of truth |
 | Stock on order | Conditional `$gte` decrement per line with rollback | Prevents overselling without MongoDB transactions |
 | Order history | Item and address snapshots | Editing a product or address never rewrites a past order |
+| Payments | Razorpay Orders REST via `fetch`, explicit `PAYMENT_MODE=mock` for local dev, HMAC verification | Real gateway code without an SDK dependency; tests run without credentials |
+| Payment record | One `payments` document per order (`orderId` unique), retries reuse it | Prevents double charges and gives one audit trail per order |
+| Webhook body | Mounted with `express.raw()` before `express.json()` | The signature is only valid over the exact bytes the gateway sent |
+| Payment activation | Only a valid signature changes the order to paid/confirmed | The browser is never trusted to declare a payment successful |
 | Testing | Manual + Postman per phase; formal suite in Phase 11 | Learn behavior before automating |
 
 ## 5. Database collections
@@ -138,7 +142,8 @@ ecommerce-platform/
 | `coupons` | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive | code unique |
 
 **Implemented:** `users`, `categories`, `products`, `carts`, `wishlists`,
-`addresses`, `orders`. The remaining collections are planned for Phases 8–10.
+`addresses`, `orders`, `payments`. The remaining collections are planned for
+Phases 9–10.
 
 ## 6. API surface
 
@@ -155,13 +160,16 @@ Marked complete here as each phase lands.
 `GET /wishlist`, `POST /wishlist/:productId`, `DELETE /wishlist/:productId`
 (Phase 6); `GET /addresses`, `POST /addresses`, `PATCH /addresses/:id`,
 `PATCH /addresses/:id/default`, `DELETE /addresses/:id`, `POST /orders/quote`,
-`POST /orders`, `GET /orders`, `GET /orders/:id` (Phase 7).
+`POST /orders`, `GET /orders`, `GET /orders/:id` (Phase 7); `POST /payments/start`,
+`POST /payments/verify`, `POST /payments/abandon`, `POST /payments/mock/complete`,
+`POST /payments/webhook` (Phase 8).
 
 **Client routes:** `/` (public), `/products`, `/products/:slug`,
 `/categories/:slug`, `/login`, `/register`, `/cart`, `/wishlist`, `/addresses`,
 `/checkout`, `/orders`, `/orders/:id` and `/account` (signed in), `/admin`
-(admin), `*` (404). Catalogue filters are URL-driven (`q`, `category`, `min`,
-`max`, `rating`, `inStock`, `sort`, `page`).
+(admin), `*` (404). The order detail page owns the payment panel. Catalogue
+filters are URL-driven (`q`, `category`, `min`, `max`, `rating`, `inStock`,
+`sort`, `page`).
 
 ## 7. Environment
 
@@ -175,6 +183,7 @@ Marked complete here as each phase lands.
 | Client (dev) | http://localhost:5173, `VITE_API_URL` (default `http://localhost:5000/api/v1`) |
 | CORS | `CORS_ORIGIN=http://localhost:5173`, credentials enabled |
 | Auth env | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12` |
+| Payment env | `PAYMENT_MODE=mock` locally; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; production requires `razorpay` mode and a key id |
 | Admin seed | `npm run seed:admin -- <email> <password> [name]` |
 | Catalog seed | `npm run seed:catalog` (idempotent) |
 | VS Code | 1.139.1 |
@@ -376,7 +385,33 @@ eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@type
 - [x] Browser checks: address CRUD/default, checkout quote, order placement,
       history, empty-cart state, guest redirects, no console errors
 - [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
-- [ ] Close Phase 7 review
+- [x] Close Phase 7 review
+
+### Phase 8 — Payment Integration
+
+- [x] Env: `PAYMENT_MODE`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
+      `RAZORPAY_WEBHOOK_SECRET`; production must use `razorpay` with a key id
+- [x] `payments` collection: unique `orderId`, provider ids, amount, status,
+      failure reason, attempts and raw payload
+- [x] Provider module: Razorpay Orders REST with Basic auth via `fetch`, mock
+      provider for local dev, HMAC-SHA256 signatures with `timingSafeEqual`
+- [x] `POST /payments/start` idempotent while an attempt is open; paid orders `409`
+- [x] `POST /payments/verify` verifies `<orderId>|<paymentId>`, marks the payment
+      paid and a `placed` order confirmed
+- [x] `POST /payments/abandon` records a failed attempt; retry increments attempts
+- [x] `POST /payments/mock/complete` returns signed credentials or a simulated
+      failure in mock mode only
+- [x] `POST /payments/webhook` mounted with `express.raw()` before JSON parsing,
+      signature checked, amount verified, unknown orders acknowledged
+- [x] Client payment types, API, hooks, Razorpay Checkout.js loader and
+      `PaymentPanel` with pay, retry, mock outcomes and abandon
+- [x] Order/checkout copy updated for the live payment step
+- [x] Server live checks (60): idempotency, signatures, ownership, failure,
+      retry, abandon, webhook rejection and idempotent replay
+- [x] Browser checks: pay via mock success, paid/confirmed UI, failed + retry,
+      cancelled attempt, no React console errors
+- [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
+- [ ] Close Phase 8 review
 
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
@@ -395,7 +430,7 @@ twice.
 | 5 | Catalogue listing, product detail, department pages, profile + password UI | done |
 | 6 | Cart + wishlist | done |
 | 7 | Addresses, checkout quote, orders, order history/detail | done |
-| 8 | Razorpay integration | not started |
+| 8 | Razorpay integration, signature verification, webhook, failure/abandon | done |
 | 9 | Order lifecycle + cancellation/refund | not started |
 | 10 | Admin dashboard + Cloudinary | not started |
 | 11 | Tests + security hardening | not started |
