@@ -358,7 +358,8 @@ export function CheckoutPage() {
                     className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-700"
                     aria-hidden="true"
                   />
-                  Payment is collected in Phase 8. This order is recorded with payment pending.
+                  Payment is collected on the order page right after placing it. The order stays
+                  pending until the payment is verified.
                 </p>
               </>
             ) : null}

@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, MapPin, Package, ShoppingBag } from 'lucide-re
 import { getErrorMessage } from '@/api/errors';
 import { Container } from '@/components/layout/Container';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/order/OrderStatusBadge';
+import { PaymentPanel } from '@/components/payment/PaymentPanel';
 import { Alert } from '@/components/ui/Alert';
 import { buttonStyles } from '@/components/ui/button-styles';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -81,8 +82,7 @@ export function OrderDetailPage() {
       {justPlaced && (
         <div className="mt-6">
           <Alert variant="success" title="Order placed">
-            We saved your order and cleared the cart. Payment is collected in Phase 8, so this order
-            currently shows payment pending.
+            We saved your order and cleared the cart. Use the payment panel to pay and confirm it.
           </Alert>
         </div>
       )}
@@ -191,9 +191,12 @@ export function OrderDetailPage() {
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-700"
                 aria-hidden="true"
               />
-              Status tracking and cancellation arrive in Phase 9. Payment is added in Phase 8.
+              Payment status updates once the server verifies a gateway response. Status tracking
+              and cancellation arrive in Phase 9.
             </p>
           </section>
+
+          <PaymentPanel order={order} />
 
           <section className="surface p-6 shadow-soft sm:p-7">
             <h2 className="font-display text-2xl font-semibold text-ink-900">Payment summary</h2>
