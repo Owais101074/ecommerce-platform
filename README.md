@@ -39,7 +39,7 @@ ecommerce-platform/
 | 8     | Payments                                    | Complete    |
 | 9     | Order management                            | Complete    |
 | 10    | Admin dashboard                             | Complete    |
-| 11    | Testing and security                        | Not started |
+| 11    | Testing and security                        | Complete    |
 | 12    | Advanced backend                            | Not started |
 | 13    | Deployment and CI/CD                        | Not started |
 
@@ -100,6 +100,8 @@ curl http://localhost:5000/api/v1/health
 | `npm run format`                                  | Prettier write                                   |
 | `npm run seed:admin -- <email> <password> [name]` | Create an admin or promote an existing user      |
 | `npm run seed:catalog`                            | Seed sample categories and products (idempotent) |
+| `npm test`                                        | Run the Vitest + Supertest suite                 |
+| `npm run test:watch`                              | Run tests in watch mode                          |
 
 ### Authentication (Phase 2)
 
@@ -114,7 +116,17 @@ curl http://localhost:5000/api/v1/health
 
 Access tokens live for 15 minutes and are sent as `Authorization: Bearer <token>`.
 The refresh token is stored in an httpOnly cookie and rotated on every refresh;
-reusing an old refresh token revokes the session.
+reusing an old refresh token revokes the session. Access tokens carry a
+`tokenVersion`; changing the password increments the stored version and
+invalidates every previously issued access token immediately.
+
+`/auth/refresh` and `/auth/logout` use a double-submit CSRF check: the server
+sets a readable `csrfToken` cookie and the client must echo it in the
+`X-CSRF-Token` header. Requests missing or mismatching the pair return `403`.
+
+Rate limits are applied per IP over a 15-minute window by default: 300 requests
+for `/api/v1` and 30 for `/auth/login` and `/auth/register` (configurable with
+`RATE_LIMIT_WINDOW_MINUTES`, `RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_MAX`).
 
 ### Catalogue (Phase 3)
 
@@ -130,6 +142,20 @@ reusing an old refresh token revokes the session.
 
 `GET /api/v1/products` supports `q`, `category`, `minPrice`, `maxPrice`,
 `rating`, `inStock`, `sort`, `page`, and `limit`. Prices are integer paise.
+
+### Reviews (Phase 11)
+
+| Method | Endpoint                         | Access               |
+| ------ | -------------------------------- | -------------------- |
+| GET    | `/api/v1/products/:slug/reviews` | public               |
+| POST   | `/api/v1/products/:id/reviews`   | access token         |
+| PATCH  | `/api/v1/reviews/:id`            | access token (owner) |
+
+Reviews are one per customer per product (`409` on a second review). The public
+list returns `data: { reviews, summary: { average, count } }` with pagination
+meta (`page`, `limit` max 50, default 10). Every create or edit recomputes the
+product's `ratingAvg` and `ratingCount` with a MongoDB aggregation, so catalogue
+ratings and filters stay consistent. There is no delete endpoint yet.
 
 ### Profile (Phase 5)
 
@@ -272,15 +298,17 @@ The app starts at `http://localhost:5173` and calls `http://localhost:5000/api/v
 by default. Override it with `VITE_API_URL` in `client/.env` (see
 `client/.env.example`).
 
-| Command                | Purpose                            |
-| ---------------------- | ---------------------------------- |
-| `npm run dev`          | Vite dev server with HMR           |
-| `npm run build`        | Type-check and build to `dist/`    |
-| `npm run preview`      | Serve the production build locally |
-| `npm run typecheck`    | TypeScript check, no output files  |
-| `npm run lint`         | ESLint                             |
-| `npm run format`       | Prettier write                     |
-| `npm run format:check` | Prettier check                     |
+| Command                | Purpose                                |
+| ---------------------- | -------------------------------------- |
+| `npm run dev`          | Vite dev server with HMR               |
+| `npm run build`        | Type-check and build to `dist/`        |
+| `npm run preview`      | Serve the production build locally     |
+| `npm run typecheck`    | TypeScript check, no output files      |
+| `npm run lint`         | ESLint                                 |
+| `npm run format`       | Prettier write                         |
+| `npm run format:check` | Prettier check                         |
+| `npm test`             | Run the Vitest + Testing Library suite |
+| `npm run test:watch`   | Run client tests in watch mode         |
 
 Client routes:
 
@@ -307,6 +335,24 @@ Client routes:
 
 The access token is kept in memory only; a reload restores the session through
 the httpOnly refresh cookie, and a 401 triggers one silent refresh and retry.
+
+### Tests (Phase 11)
+
+```bash
+cd server && npm test
+cd client && npm test
+```
+
+The server suite runs against a real local MongoDB database named
+`ecommerce_test` (`MONGODB_URI` can override it); collections are cleared between
+tests and the database is dropped at the end. Tests run serially to keep shared
+state predictable. The client suite runs in jsdom with Testing Library and
+covers formatting helpers, the `Button` primitive, and the route guards.
+
+| Suite  | Files | Tests |
+| ------ | ----- | ----- |
+| Server | 6     | 41    |
+| Client | 3     | 12    |
 
 ### Design system
 

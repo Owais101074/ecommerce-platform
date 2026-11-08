@@ -1,21 +1,23 @@
 # API Contract
 
 Each endpoint marked with a phase is implemented as that phase completes.
-Phases 1–9 are live.
+Phases 1–11 are live.
 
 ## Conventions
 
-| Rule       | Value                                                                            |
-| ---------- | -------------------------------------------------------------------------------- |
-| Base URL   | `/api/v1`                                                                        |
-| Format     | JSON (`application/json`), except the payment webhook (raw body)                 |
-| Auth       | `Authorization: Bearer <accessToken>` for protected routes                       |
-| Roles      | `customer` (default), `admin`                                                    |
-| Pagination | `?page=1&limit=20`; responses include `meta: { page, limit, total, totalPages }` |
-| Sorting    | `?sort=price_asc`, `price_desc`, `newest`, `rating`                              |
-| Money      | Integer **paise** in every request/response field                                |
-| Public IDs | Products and categories use `slug`; other resources use ObjectId                 |
-| Deletes    | Soft delete; deleted resources return `404`                                      |
+| Rule       | Value                                                                              |
+| ---------- | ---------------------------------------------------------------------------------- |
+| Base URL   | `/api/v1`                                                                          |
+| Format     | JSON (`application/json`), except the payment webhook (raw body)                   |
+| Auth       | `Authorization: Bearer <accessToken>` for protected routes                         |
+| Roles      | `customer` (default), `admin`                                                      |
+| CSRF       | `X-CSRF-Token` header must match the readable `csrfToken` cookie on refresh/logout |
+| Rate limit | Per IP, 15-minute window: 300 requests for `/api/v1`, 30 for login/register        |
+| Pagination | `?page=1&limit=20`; responses include `meta: { page, limit, total, totalPages }`   |
+| Sorting    | `?sort=price_asc`, `price_desc`, `newest`, `rating`                                |
+| Money      | Integer **paise** in every request/response field                                  |
+| Public IDs | Products and categories use `slug`; other resources use ObjectId                   |
+| Deletes    | Soft delete; deleted resources return `404`                                        |
 
 ### Success envelope
 
@@ -74,6 +76,14 @@ Phases 1–9 are live.
 
 The refresh token lives only in an httpOnly cookie scoped to `/api/v1/auth`.
 Access tokens are returned in the JSON body and sent as `Authorization: Bearer`.
+Access tokens include a `tokenVersion` claim; a password change increments the
+stored version and invalidates every previously issued access token.
+
+`POST /auth/refresh` and `POST /auth/logout` additionally require the
+double-submit CSRF pair: the `csrfToken` cookie (set by login/register/refresh,
+readable by JavaScript) must equal the `X-CSRF-Token` header. A missing or
+mismatched pair returns `403`. The server sets Helmet security headers and
+returns `429` with `RateLimit-*` headers when a client exceeds its limit.
 
 ## Admin smoke route — Phase 2
 
@@ -190,18 +200,44 @@ store in `images`.
 Create body: `{ name, description, price, categoryId, images?, stock? }`.
 `images` defaults to `[]` and `stock` to `0`.
 
-## Reviews — Phase 11
+## Reviews — Phase 11 (implemented)
 
-Product cards and detail pages currently show stored `ratingAvg` / `ratingCount`
-aggregates. Review documents and endpoints arrive with the testing and security
-phase; no review API exists yet.
+Reviews belong to one product and one customer. The unique index on
+`(userId, productId)` allows one review per customer per product. Every create or
+edit recomputes the product's `ratingAvg` and `ratingCount`.
 
-| Method | Endpoint                  | Access             | Purpose                                 |
-| ------ | ------------------------- | ------------------ | --------------------------------------- |
-| GET    | `/products/:slug/reviews` | public             | Paginated reviews + rating summary      |
-| POST   | `/products/:id/reviews`   | auth               | Create review (verified purchase later) |
-| PATCH  | `/reviews/:id`            | auth (owner)       | Edit review                             |
-| DELETE | `/reviews/:id`            | auth (owner/admin) | Delete review                           |
+| Method | Endpoint                  | Access       | Purpose                            |
+| ------ | ------------------------- | ------------ | ---------------------------------- |
+| GET    | `/products/:slug/reviews` | public       | Paginated reviews + rating summary |
+| POST   | `/products/:id/reviews`   | auth         | Create the customer's review       |
+| PATCH  | `/reviews/:id`            | auth (owner) | Edit rating and/or comment         |
+
+`GET` query: `?page=1&limit=10` (limit 1–50). Response:
+
+```json
+{
+  "data": {
+    "reviews": [
+      {
+        "id": "...",
+        "rating": 5,
+        "comment": "Great quality",
+        "author": { "id": "...", "name": "Asha" },
+        "createdAt": "...",
+        "updatedAt": "..."
+      }
+    ],
+    "summary": { "average": 4.5, "count": 2 }
+  },
+  "meta": { "page": 1, "limit": 10, "total": 2, "totalPages": 1 }
+}
+```
+
+Create body `{ rating, comment? }`; `rating` is an integer 1–5 and `comment`
+is trimmed, max 1000 characters, defaulting to `""`. Update body
+`{ rating?, comment? }` with at least one field. Errors: `404` product/review
+missing, `409` duplicate review, `403` editing someone else's review, `400`
+invalid input. There is no delete or admin moderation endpoint yet.
 
 ## Cart — Phase 6 (implemented)
 

@@ -6,9 +6,9 @@ For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-09
-**Current phase:** Phase 10 — Admin Dashboard (complete, awaiting review)
-**Latest work:** Admin layout and analytics dashboard, coupon engine with checkout discounts, admin customer management, product/category management UI and Cloudinary-signed image uploads
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10
+**Current phase:** Phase 11 — Testing and Security (complete, awaiting review)
+**Latest work:** Reviews module with rating aggregates, Helmet + strict CORS + rate limiting, CSRF double-submit on refresh/logout, token-version invalidation, and server/client Vitest suites
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -132,7 +132,7 @@ ecommerce-platform/
 | Admin analytics        | MongoDB aggregations over paid orders, UTC day buckets, batched customer lookups                                 | One small set of queries for the dashboard instead of per-card fetches                    |
 | Customer deactivation  | `isActive` is checked on every authenticated request and the refresh session is cleared                          | A disabled account loses access immediately, not when its access token expires            |
 | Uploads                | 5 MB memory upload, JPEG/PNG/WebP only, server-signed Cloudinary request                                         | The API secret stays on the server; local dev works without a vendor account              |
-| Testing                | Manual + Postman per phase; formal suite in Phase 11                                                             | Learn behavior before automating                                                          |
+| Testing                | Vitest + Supertest on a real `ecommerce_test` DB; Testing Library in jsdom                                       | Mocks would hide index and aggregation bugs                                               |
 
 ## 5. Database collections
 
@@ -150,8 +150,7 @@ ecommerce-platform/
 | `coupons`    | code, type, value, minOrder, maxDiscount, startsAt, expiresAt, maxUses, usedCount, isActive                                                                                                    | code unique                                                                        |
 
 **Implemented:** `users`, `categories`, `products`, `carts`, `wishlists`,
-`addresses`, `orders`, `payments`, `coupons`. Reviews remain planned for
-Phase 11.
+`addresses`, `orders`, `payments`, `coupons`, `reviews`.
 
 ## 6. API surface
 
@@ -176,7 +175,8 @@ Marked complete here as each phase lands.
 `PATCH /coupons/:id`, `DELETE /coupons/:id`, `GET /admin/stats`,
 `GET /admin/customers`, `GET /admin/customers/:id`,
 `PATCH /admin/customers/:id/status`, `POST /admin/uploads/product-image`
-(Phase 10).
+(Phase 10); `GET /products/:slug/reviews`, `POST /products/:id/reviews`,
+`PATCH /reviews/:id` (Phase 11).
 
 **Client routes:** `/` (public), `/products`, `/products/:slug`,
 `/categories/:slug`, `/login`, `/register`, `/cart`, `/wishlist`, `/addresses`,
@@ -202,6 +202,8 @@ customer lists use `?search`, `?active`/`?status`, `?page` and `?limit`.
 | Auth env     | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12`        |
 | Payment env  | `PAYMENT_MODE=mock` locally; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; production requires `razorpay` mode and a key id          |
 | Upload env   | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER` (default `ecommerce-platform`); uploads return `503` when unset |
+| Rate limits  | `RATE_LIMIT_WINDOW_MINUTES=15`, `RATE_LIMIT_MAX=300`, `AUTH_RATE_LIMIT_MAX=30`                                                                              |
+| Test DB      | `mongodb://127.0.0.1:27017/ecommerce_test` (set by `server/tests/setup.ts`, dropped after the suite)                                                        |
 | Admin seed   | `npm run seed:admin -- <email> <password> [name]`                                                                                                           |
 | Catalog seed | `npm run seed:catalog` (idempotent)                                                                                                                         |
 | VS Code      | 1.139.1                                                                                                                                                     |
@@ -212,14 +214,16 @@ customer lists use `?search`, `?active`/`?status`, `?page` and `?limit`.
 ## 8. Installed dependencies
 
 **server — runtime:** express 5, mongoose 9, dotenv 18, zod 4, cors 2, morgan 1,
-bcryptjs 3, jsonwebtoken 9, cookie-parser 1.
+bcryptjs 3, jsonwebtoken 9, cookie-parser 1, helmet 8, express-rate-limit 8.
 **server — dev:** typescript 6, tsx 4, eslint 10, typescript-eslint 8,
-eslint-config-prettier 10, prettier 3, `@types/*` (incl. jsonwebtoken, cookie-parser).
+eslint-config-prettier 10, prettier 3, vitest 5, supertest 7, `@types/*` (incl.
+jsonwebtoken, cookie-parser, supertest).
 **client — runtime:** react 19, react-dom 19, react-router-dom 7, @tanstack/react-query 5,
 axios 1, lucide-react.
 **client — dev:** vite 8, @vitejs/plugin-react 6, typescript 6, tailwindcss 4,
 @tailwindcss/vite 4, eslint 10, typescript-eslint 8, eslint-plugin-react-hooks 7,
-eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@types/*`.
+eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, vitest 5,
+jsdom, @testing-library/react, @testing-library/jest-dom, `@types/*`.
 
 ## 9. Phase checklists
 
@@ -487,6 +491,35 @@ eslint-plugin-react-refresh, globals, eslint-config-prettier, prettier 3, `@type
 - [x] `typecheck`, `lint`, `format:check`, and `build` pass for both apps
 - [ ] Close Phase 10 review
 
+### Phase 11 — Testing and Security
+
+- [x] `reviews` collection with a unique `(userId, productId)` index and a
+      product/date listing index
+- [x] Public paginated review list with rating summary; authenticated create;
+      owner-only edit; duplicate review `409`
+- [x] Product `ratingAvg` / `ratingCount` recomputed with an aggregation on every
+      review write
+- [x] Product page review UI: summary, paginated list, create/edit form and guest
+      sign-in prompt
+- [x] Helmet headers, disabled `x-powered-by`, strict CORS allowlist and
+      `X-CSRF-Token` in allowed headers
+- [x] Rate limiting: 300 requests per 15 minutes for `/api/v1`, 30 for login and
+      register, all environment-configurable
+- [x] Double-submit CSRF on `/auth/refresh` and `/auth/logout` with timing-safe
+      comparison; client echoes the readable `csrfToken` cookie
+- [x] `tokenVersion` in access tokens; password change increments it and rejects
+      every older token
+- [x] JSON `413` for oversized payloads
+- [x] Server test infrastructure (Vitest + Supertest, real `ecommerce_test` DB,
+      serial files, shared auth/factory helpers) and 41 tests across pricing,
+      coupons, auth, security, orders and reviews
+- [x] Client test infrastructure (Vitest + jsdom + Testing Library) and 12 tests
+      across format helpers, `Button` and route guards
+- [x] Server and client `typecheck`, `lint`, `format:check` and `build` pass
+- [x] Live API checks for headers, CORS, rate-limit headers, CSRF `403`, `413`
+      and reviews; browser checks for guest and authenticated review flows
+- [ ] Close Phase 11 review
+
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
 twice.
@@ -507,7 +540,7 @@ twice.
 | 8     | Razorpay integration, signature verification, webhook, failure/abandon     | done        |
 | 9     | Order lifecycle + cancellation/refund                                      | done        |
 | 10    | Admin dashboard, coupons and Cloudinary uploads                            | done        |
-| 11    | Tests + security hardening                                                 | not started |
+| 11    | Reviews, security hardening and test suites                                | done        |
 | 12    | Redis, jobs, email, logging, Docker                                        | not started |
 | 13    | Deployment + GitHub Actions                                                | not started |
 

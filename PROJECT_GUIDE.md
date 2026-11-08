@@ -29,21 +29,21 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 
 ## 1. Project at a glance
 
-| Item             | Value                                                                                                           |
-| ---------------- | --------------------------------------------------------------------------------------------------------------- |
-| Type             | Production-style e-commerce platform (learning project)                                                         |
-| Repository       | `ecommerce-platform` (public, GitHub)                                                                           |
-| Structure        | Monorepo: `client/` + `server/`, independent `package.json` files, no npm workspaces                            |
-| Backend          | Node.js 22, Express 5, TypeScript 6, REST, JWT, Zod 4                                                           |
-| Database         | MongoDB 8.2 + Mongoose 9                                                                                        |
-| Frontend         | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios                       |
-| Tooling          | Git, GitHub CLI, ESLint 10, Prettier 3, Postman                                                                 |
-| Current phase    | Phase 10 complete (admin dashboard, coupons, customer and catalogue management, image uploads), awaiting review |
-| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10                                                                                |
-| Next phase       | Phase 11 — Testing and Security                                                                                 |
-| API base         | `http://localhost:5000/api/v1`                                                                                  |
-| Client base      | `http://localhost:5173`                                                                                         |
-| Database (dev)   | `mongodb://127.0.0.1:27017/ecommerce_dev`                                                                       |
+| Item             | Value                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| Type             | Production-style e-commerce platform (learning project)                                         |
+| Repository       | `ecommerce-platform` (public, GitHub)                                                           |
+| Structure        | Monorepo: `client/` + `server/`, independent `package.json` files, no npm workspaces            |
+| Backend          | Node.js 22, Express 5, TypeScript 6, REST, JWT, Zod 4                                           |
+| Database         | MongoDB 8.2 + Mongoose 9                                                                        |
+| Frontend         | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios       |
+| Tooling          | Git, GitHub CLI, ESLint 10, Prettier 3, Postman                                                 |
+| Current phase    | Phase 11 complete (reviews, security hardening, server and client test suites), awaiting review |
+| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11                                                            |
+| Next phase       | Phase 12 — Advanced Backend Engineering                                                         |
+| API base         | `http://localhost:5000/api/v1`                                                                  |
+| Client base      | `http://localhost:5173`                                                                         |
+| Database (dev)   | `mongodb://127.0.0.1:27017/ecommerce_dev`                                                       |
 
 ---
 
@@ -271,25 +271,28 @@ Layout split:
 
 ### 4.7 Security model
 
-| Threat                      | Mitigation                                                | Status                  |
-| --------------------------- | --------------------------------------------------------- | ----------------------- |
-| Password database leak      | bcrypt cost 12, never store plain text                    | DONE                    |
-| Token theft from JavaScript | refresh token in httpOnly cookie                          | DONE                    |
-| Stolen refresh token reuse  | rotation + reuse detection clears session                 | DONE                    |
-| Refresh token DB leak       | only SHA-256 hash stored                                  | DONE                    |
-| Account enumeration         | generic `Invalid email or password`                       | DONE                    |
-| Wrong role access           | `authorize(...roles)` returns 403                         | DONE                    |
-| Secret leakage              | `.env` gitignored, Zod startup validation                 | DONE                    |
-| Oversized JSON payload      | 10kb body limit                                           | DONE                    |
-| XSS                         | React escaping + no token in localStorage (frontend plan) | PLANNED                 |
-| CSRF                        | `sameSite=lax` cookie + cookie scoped to `/api/v1/auth`   | DONE (basic)            |
-| Brute force                 | rate limiting                                             | PLANNED Phase 11        |
-| Security headers            | helmet-style headers                                      | PLANNED Phase 11        |
-| Input injection             | Zod schemas, Mongoose casting                             | DONE for current routes |
+| Threat                      | Mitigation                                                  | Status                  |
+| --------------------------- | ----------------------------------------------------------- | ----------------------- |
+| Password database leak      | bcrypt cost 12, never store plain text                      | DONE                    |
+| Token theft from JavaScript | refresh token in httpOnly cookie                            | DONE                    |
+| Stolen refresh token reuse  | rotation + reuse detection clears session                   | DONE                    |
+| Refresh token DB leak       | only SHA-256 hash stored                                    | DONE                    |
+| Account enumeration         | generic `Invalid email or password`                         | DONE                    |
+| Wrong role access           | `authorize(...roles)` returns 403                           | DONE                    |
+| Secret leakage              | `.env` gitignored, Zod startup validation                   | DONE                    |
+| Oversized JSON payload      | 10kb body limit                                             | DONE                    |
+| XSS                         | React escaping + access token in memory, never localStorage | DONE                    |
+| CSRF                        | double-submit token for cookie-authenticated refresh/logout | DONE                    |
+| Brute force                 | per-IP rate limits (300 API / 30 auth per 15 min)           | DONE                    |
+| Security headers            | Helmet defaults, `x-powered-by` disabled                    | DONE                    |
+| Stolen access token         | short 15-minute lifetime + `tokenVersion` check             | DONE                    |
+| Cross-origin writes         | strict CORS allowlist, unknown origins `403`                | DONE                    |
+| Input injection             | Zod schemas, Mongoose casting                               | DONE for current routes |
 
-Known CSRF note: if the frontend is later deployed on a different domain, the
-cookie must become `sameSite: 'none'; secure: true`, which removes the built-in
-CSRF protection. A CSRF token or same-site proxy must be added in Phase 11.
+Known CSRF note: if the frontend is later served from a different site, both
+cookies must become `sameSite: 'none'; secure: true`. The double-submit check
+still protects refresh and logout in that setup, because a cross-site page can
+send the cookies but cannot read the `csrfToken` value to fill the header.
 
 ---
 
@@ -490,7 +493,7 @@ screens share `AdminLayout` and live under `pages/Admin*Page.tsx`.
 | Shipping             | Free from ₹999 (99,900 paise), else ₹49 (4,900 paise)              | One threshold measured after discount                     |
 | Address default      | First address auto-default, exactly one default                    | Checkout has one unambiguous pre-selection                |
 | Stock on order       | Conditional `$gte` decrement with rollback                         | Prevents overselling without transactions                 |
-| Testing              | Manual/Postman per phase, suite in Phase 11                        | Learn behavior before automating                          |
+| Testing              | Vitest + Supertest (server) and Vitest + Testing Library (client)  | Real HTTP and DOM behaviour instead of mocks              |
 | Docker               | Phase 12                                                           | Core behaviour first, packaging later                     |
 
 ---
@@ -565,7 +568,8 @@ Catalogue rules:
 - Category deletion returns 409 while active children or products exist.
 - Deletes are soft: public reads filter `isActive: true`.
 - Product responses include a category summary `{ id, name, slug }`.
-- Ratings are stored aggregates; actual review documents arrive in Phase 11.
+- Ratings are stored aggregates, recomputed from the `reviews` collection on
+  every review create or edit.
 
 ### 7.3 Implemented — `addresses`, `orders` and `payments`
 
@@ -1389,19 +1393,68 @@ invalidation across related resources.
 
 ---
 
-### Phase 11 — Testing and Security — **PLANNED**
+### Phase 11 — Testing and Security — **DONE**
 
 **Goal:** prove correctness and harden the system.
 
-**Will deliver:**
+**Delivered:**
 
-- Unit tests for services and utilities.
-- Integration/API tests for critical flows.
-- Frontend component tests.
-- Rate limiting, security headers, stricter CORS.
-- CSRF protection for cookie-based refresh.
-- Auth hardening: token versioning, multi-device sessions if adopted.
-- Centralized test data management.
+- `reviews` collection with `userId`, `productId`, integer `rating` 1–5, a
+  trimmed comment up to 1000 characters and timestamps. A unique compound index
+  on `(userId, productId)` enforces one review per customer per product, and a
+  `(productId, createdAt)` index serves the newest-first list.
+- `GET /products/:slug/reviews` is public and paginated (`page`, `limit` 1–50,
+  default 10). It returns `data: { reviews, summary }` plus pagination meta;
+  author names are resolved with one batched user query. `POST
+/products/:id/reviews` requires authentication and returns `409` on a
+  duplicate. `PATCH /reviews/:id` is owner-only (`403` otherwise).
+- Every create or edit recomputes `ratingAvg` (one decimal) and `ratingCount`
+  with a MongoDB `$group` aggregation over that product's reviews. The
+  catalogue therefore keeps one stored aggregate per product while edits and new
+  reviews stay correct.
+- Client review section on the product page: rating summary with stars, a
+  paginated list, a create form for signed-in customers, an edit form for the
+  owner's own review, and a sign-in prompt for guests. TanStack Query invalidates
+  the review list and the product after a write.
+- Helmet security headers, `x-powered-by` disabled, a strict CORS allowlist that
+  rejects unknown origins with `403` (and allows the `X-CSRF-Token` header), and
+  `express-rate-limit` on `/api/v1` (300 requests) plus tighter limits on login
+  and register (30 requests) per 15-minute window. Limits are environment-driven
+  (`RATE_LIMIT_WINDOW_MINUTES`, `RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_MAX`).
+- CSRF double-submit protection for the two cookie-authenticated endpoints,
+  `/auth/refresh` and `/auth/logout`. Login and refresh set a readable
+  `csrfToken` cookie (32 random bytes, path `/`); the client echoes it in
+  `X-CSRF-Token`; the server compares both with `timingSafeEqual` and returns
+  `403` if either is missing or different.
+- Access tokens now include `tokenVersion`. A password change increments the
+  stored value and clears the refresh session, so `authenticate` rejects every
+  previously issued access token on its next use instead of waiting 15 minutes.
+- Oversized bodies return a JSON `413` (the error handler maps body-parser
+  errors) rather than an HTML stack page.
+- Server tests: Vitest + Supertest against a real local `ecommerce_test`
+  database (`server/vitest.config.mts`, serial files, collections cleared
+  between tests). Shared helpers cover database lifecycle, cookie/auth headers,
+  admin promotion and factories for categories, products, addresses and
+  coupons. 41 tests: pricing 4, coupon service 11, auth 10, security 6, orders 5,
+  reviews 5.
+- Client tests: Vitest + jsdom + Testing Library. 12 tests over `formatPrice` /
+  date / initials helpers, the `Button` primitive, and the guest/auth/admin
+  route guards (including redirect-with-`from` and the "Admins only" state).
+
+**Verification:** the server suite passed twice (41/41) and the client suite
+passed (12/12). Live API checks confirmed Helmet headers, no `x-powered-by`, a
+`403` for an unknown CORS origin, an allowed origin echoed with credentials,
+`RateLimit-*` headers, `403` on refresh without the CSRF header, JSON `404` and
+`413`, and the review list shape. Browser checks covered the guest sign-in
+prompt and an authenticated review that updated the summary, aggregate, list and
+Edit action. QA data was removed afterwards. `typecheck`, `lint`,
+`format:check` and `build` pass for both apps.
+
+**Key concepts learned:** testing behaviour through the HTTP layer with a real
+database instead of mocks, serial test isolation and deterministic factories,
+double-submit CSRF, timing-safe comparison, denormalised rating aggregates kept
+correct by recomputation, token versioning for instant session invalidation, and
+environment-driven rate limits.
 
 ---
 
@@ -1454,7 +1507,14 @@ both problems, and the refresh token can be revoked server-side.
 Access token:
 
 ```json
-{ "sub": "<userId>", "role": "customer", "type": "access", "iat": 0, "exp": 0 }
+{
+  "sub": "<userId>",
+  "role": "customer",
+  "tokenVersion": 0,
+  "type": "access",
+  "iat": 0,
+  "exp": 0
+}
 ```
 
 Refresh token:
@@ -1466,6 +1526,9 @@ Refresh token:
 - `sub` = subject, the user id.
 - `jti` = unique token id, prevents identical tokens from two logins in the
   same second.
+- `tokenVersion` = snapshot of the user's version. `authenticate` compares it
+  with the stored value; a password change increments the stored value, so old
+  access tokens stop working immediately.
 - `type` = explicit guard against using one token as the other.
 - Different secrets for access and refresh add a second layer of separation.
 
@@ -2045,14 +2108,14 @@ the returned function per request.
 Fourteen phases from planning to deployment. Each phase has a single concern,
 ends with verification, documentation, commit and push, then a teaching review.
 
-**Q36. How do you ensure quality without a test suite yet?**  
-Typecheck, lint, format, build, and manual/Postman checks of success and failure
-paths. Automated tests arrive in Phase 11; the API is designed for testability.
+**Q36. How do you ensure quality?**  
+Typecheck, lint, format, build, an automated suite, and manual checks of success
+and failure paths. The server suite drives real HTTP requests against a real
+MongoDB test database; the client suite renders components in jsdom.
 
 **Q37. What would you do differently?**  
 Add automated tests earlier, use a sessions collection for multi-device refresh,
 and add OpenAPI/Swagger generation from Zod schemas.
-
 **Q38. What is the hardest part so far?**  
 Refresh rotation with reuse detection: coordinating JWT expiry, hashed storage,
 and session revocation without leaking which check failed.
@@ -2318,15 +2381,15 @@ accidentally skipped.
 | Cloudinary            | Uploads need `CLOUDINARY_*` credentials; without them the endpoint returns `503` and products use image URLs                                             | Add credentials to `server/.env` to exercise real uploads         |
 | Stock safety          | Conditional updates with rollback, not MongoDB transactions                                                                                              | Transactions need a replica set; document in Phase 12             |
 | Profile API           | Name and password only; email changes and avatar upload are not built                                                                                    | Later                                                             |
-| Client tests          | Manual browser checks only                                                                                                                               | Phase 11                                                          |
+| Client tests          | Component and guard tests only; no page-level integration or browser E2E suite                                                                           | Add Playwright later                                              |
 | UI verification       | No screenshots captured; in-app browser had no viewport                                                                                                  | Re-check visuals when a real browser is available                 |
 | Catalogue images      | Seed data still ships one image per product even though the admin form accepts up to five                                                                | Add more images to the seed if a gallery demo is needed           |
 | Product images        | Uploads are Cloudinary-only and require credentials                                                                                                      | Add credentials to `server/.env`                                  |
-| Ratings               | Aggregate fields exist but no review documents                                                                                                           | Phase 11                                                          |
+| Ratings               | Reviews and aggregates exist, but reviews are not purchase-verified and there is no delete or moderation flow                                            | Add verified-purchase, delete and moderation later                |
 | Multi-device sessions | One refresh hash per user                                                                                                                                | Sessions collection later                                         |
-| Automated tests       | Manual checks only                                                                                                                                       | Phase 11                                                          |
-| Rate limiting         | Not implemented                                                                                                                                          | Phase 11                                                          |
-| CSRF token            | Not needed for same-site dev; required for cross-site prod                                                                                               | Phase 11                                                          |
+| Automated tests       | 41 server and 12 client tests; no E2E suite and no coverage threshold                                                                                    | Add E2E and coverage gates later                                  |
+| Rate limiting         | In-memory per process; a multi-instance deployment would count each instance separately                                                                  | Move to a shared Redis store in Phase 12                          |
+| CSRF token            | Double-submit covers cookie-authenticated refresh/logout; Bearer routes rely on CORS and the custom header                                               | Keep in sync if cookies are added to other routes                 |
 | Swagger/OpenAPI       | Not implemented                                                                                                                                          | Optional later                                                    |
 | Redis, jobs, email    | Not implemented                                                                                                                                          | Phase 12                                                          |
 | Docker                | Not installed                                                                                                                                            | Phase 12                                                          |
@@ -2339,9 +2402,10 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 11 — Testing and Security: unit and integration tests for services and
-critical flows, frontend component tests, rate limiting, security headers,
-stricter CORS, CSRF protection for the refresh cookie, and review hardening.
+Phase 12 — Advanced Backend Engineering: Redis caching for catalogue reads with
+invalidation, background jobs and email notifications, structured logging with
+request correlation, an index/performance review, a shared rate-limit store, and
+Docker Compose for the API, MongoDB and Redis.
 
 Do not start until the reviewer explicitly says:
 

@@ -249,6 +249,40 @@ updatedAt }`; cancelling clears it and the detail page renders it.
 - **Phase 10** — checkout coupon card with apply/remove, server quote refresh,
   discount and recalculated GST/total, and a remove action when the quote
   rejects the applied code.
+- **Phase 11** — `reviews` collection with one review per customer per product
+  (unique compound index) and a product/date index for listing.
+- **Phase 11** — public `GET /products/:slug/reviews` with pagination and a
+  rating summary, authenticated `POST /products/:id/reviews`, and owner-only
+  `PATCH /reviews/:id`; duplicates return `409`.
+- **Phase 11** — every review create or edit recomputes `ratingAvg` and
+  `ratingCount` with a MongoDB aggregation, so catalogue cards, filters and the
+  product detail summary always agree.
+- **Phase 11** — product page review section: summary with stars, paginated
+  list, create/edit form for signed-in customers, and a sign-in prompt for
+  guests.
+- **Phase 11** — Helmet security headers, `x-powered-by` disabled, a strict CORS
+  allowlist that rejects unknown origins with `403`, and the CORS
+  `X-CSRF-Token` header.
+- **Phase 11** — `express-rate-limit` on `/api/v1` (300 requests) and on
+  `/auth/login` and `/auth/register` (30 requests) per 15-minute window, with
+  configurable `RATE_LIMIT_WINDOW_MINUTES`, `RATE_LIMIT_MAX` and
+  `AUTH_RATE_LIMIT_MAX`.
+- **Phase 11** — double-submit CSRF protection for `/auth/refresh` and
+  `/auth/logout`: a readable `csrfToken` cookie must match the `X-CSRF-Token`
+  header, compared with `timingSafeEqual`; the client echoes the cookie on every
+  request.
+- **Phase 11** — access tokens carry `tokenVersion`; a password change bumps the
+  stored version, so every previously issued access token is rejected on the
+  next request.
+- **Phase 11** — oversized payloads return a JSON `413` instead of an HTML error
+  page.
+- **Phase 11** — server test suite: Vitest + Supertest against a real
+  `ecommerce_test` database, 41 tests over pricing, coupons, auth, security,
+  orders and reviews.
+- **Phase 11** — client test suite: Vitest + jsdom + Testing Library, 12 tests
+  over formatting helpers, the `Button` primitive and the route guards.
+- **Phase 11** — shared test helpers for database lifecycle, auth cookies,
+  tokens and factories for categories, products, addresses and coupons.
 
 ### Fixed
 
@@ -285,8 +319,8 @@ updatedAt }`; cancelling clears it and the detail page renders it.
 - Icons come from lucide-react instead of hand-drawn SVGs.
 - Catalogue filters live in the URL, so search, sort, filters and page are
   shareable and survive reloads; rupee inputs convert to integer paise.
-- Product detail pages reuse the stored rating aggregates; review documents are
-  still deferred to Phase 11.
+- Product detail pages read the stored rating aggregates; review documents were
+  added in Phase 11 with the aggregate recomputed on every write.
 - A password change revokes the refresh session and signs the user out
   everywhere; the login page explains why through a redirect notice.
 - Addresses are stored per user and scoped by `userId` in every query, so an id
@@ -372,6 +406,16 @@ updatedAt }`; cancelling clears it and the detail page renders it.
   vendor-independent.
 - Admin product and category pages reuse the public read endpoints and the
   existing admin CRUD endpoints; no duplicate catalogue API was added.
+- Tests run against a real local MongoDB (`ecommerce_test`) rather than mocks, so
+  indexes, unique constraints and aggregation behaviour are exercised for real;
+  collections are cleared between tests and files run serially.
+- Rating aggregates stay denormalised on the product (recomputed on write)
+  instead of aggregating reviews on every catalogue request.
+- CSRF uses the double-submit pattern: the token cookie is intentionally
+  readable by the client, but a cross-site page cannot read it to fill the
+  header.
+- Rate limits are environment-driven, so tests can raise them and production can
+  tighten them without code changes.
 
 ### Verified
 
@@ -495,3 +539,18 @@ updatedAt }`; cancelling clears it and the detail page renders it.
   client build reports only the expected single-chunk size advisory.
 - `npm audit --omit=dev` reports 0 vulnerabilities; the remaining moderate
   advisories are in ESLint's `minimatch` dependency chain (dev only).
+- Phase 11 server suite: 41 tests across 6 files pass against the local
+  `ecommerce_test` database (pricing 4, coupons 11, auth 10 including CSRF and
+  token invalidation, security 6, orders 5, reviews 5).
+- Phase 11 client suite: 12 tests across 3 files pass (format helpers, `Button`,
+  route guards).
+- Phase 11 live API checks: Helmet headers present and `x-powered-by` absent,
+  unknown CORS origin `403`, allowed origin echoed with credentials, rate-limit
+  headers (`RateLimit-Limit: 300`), CSRF-less refresh `403`, JSON `404`,
+  oversized JSON `413`, review list shape with summary and pagination.
+- Phase 11 browser checks: guest sees the sign-in prompt in the review section;
+  a signed-in customer creates a review and the summary, aggregate, list and
+  Edit action update; sign-out still works. The QA review, user and rating
+  reset were removed afterwards.
+- Phase 11 gates: server and client `typecheck`, `lint`, `format:check` and
+  `build` pass; the client build reports only the expected chunk-size advisory.
