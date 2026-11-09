@@ -10,6 +10,7 @@ clean architecture, TypeScript, and real-world backend practices.
 | Frontend | React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, Axios, lucide-react |
 | Backend  | Node.js, Express, TypeScript, REST, JWT, Zod                                             |
 | Database | MongoDB + Mongoose                                                                       |
+| Infra    | Redis + ioredis, BullMQ, Nodemailer, structured JSON logs, Docker Compose                |
 | Tooling  | Git, GitHub CLI, ESLint, Prettier, Postman                                               |
 
 ## Repository layout
@@ -40,7 +41,7 @@ ecommerce-platform/
 | 9     | Order management                            | Complete    |
 | 10    | Admin dashboard                             | Complete    |
 | 11    | Testing and security                        | Complete    |
-| 12    | Advanced backend                            | Not started |
+| 12    | Advanced backend                            | Complete    |
 | 13    | Deployment and CI/CD                        | Not started |
 
 ## Documentation
@@ -56,6 +57,8 @@ ecommerce-platform/
 
 - Node.js 22 (`nvm use` reads `.nvmrc`)
 - MongoDB running locally on `127.0.0.1:27017`
+- Redis (optional; only when `CACHE_DRIVER=redis` or `QUEUE_DRIVER=bullmq`)
+- Docker + Docker Compose (optional; runs the API, MongoDB and Redis together)
 
 ### Server
 
@@ -83,6 +86,7 @@ curl http://localhost:5000/api/v1/health
     "environment": "development",
     "uptime": 12,
     "database": "connected",
+    "infrastructure": { "cache": "memory", "queue": "memory", "mail": "log" },
     "timestamp": "2026-11-02T13:52:18.689Z"
   }
 }
@@ -100,6 +104,7 @@ curl http://localhost:5000/api/v1/health
 | `npm run format`                                  | Prettier write                                   |
 | `npm run seed:admin -- <email> <password> [name]` | Create an admin or promote an existing user      |
 | `npm run seed:catalog`                            | Seed sample categories and products (idempotent) |
+| `npm run perf:indexes`                            | Explain catalogue queries before/after indexes   |
 | `npm test`                                        | Run the Vitest + Supertest suite                 |
 | `npm run test:watch`                              | Run tests in watch mode                          |
 
@@ -336,7 +341,63 @@ Client routes:
 The access token is kept in memory only; a reload restores the session through
 the httpOnly refresh cookie, and a 401 triggers one silent refresh and retry.
 
-### Tests (Phase 11)
+### Advanced infrastructure (Phase 12)
+
+Every piece of infrastructure is driver-based, so the API runs with zero external
+services in development and tests:
+
+| Capability | Default | Alternatives | Notes                                                          |
+| ---------- | ------- | ------------ | -------------------------------------------------------------- |
+| Cache      | memory  | `redis`, none | Read-through catalogue cache; invalidated on catalogue writes  |
+| Queue      | memory  | `bullmq`, none | Email jobs; BullMQ retries 3× with exponential backoff        |
+| Mail       | log     | `smtp`, none | `log` records messages in an in-memory outbox and logs them    |
+
+- Catalogue list/detail and category reads are cached with a TTL
+  (`CACHE_TTL_SECONDS`, default 60). Product, category, review-rating and
+  order stock writes invalidate the affected namespace. Cache failures fall back
+  to the database and never fail a request.
+- Order lifecycle events queue email jobs: placed, confirmed, shipped, delivered
+  and cancelled. A webhook retry or repeated verification does **not** send a
+  second confirmation email.
+- Every request gets an `X-Request-Id` (incoming value reused when it matches
+  `[A-Za-z0-9._-]{8,128}`, otherwise a UUID). The same id is attached to the
+  JSON logs, including queued email jobs.
+- `npm run perf:indexes` builds 5,000 synthetic products in a throwaway
+  `ecommerce_perf` database, explains the main catalogue queries before and
+  after the declared indexes, and drops the database. On the reference run
+  documents examined dropped from 5,000 to 1–20 and query time from 9–11 ms to
+  1–2 ms.
+
+Environment variables (see `server/.env.example`):
+
+| Variable                          | Default                                  |
+| --------------------------------- | ---------------------------------------- |
+| `LOG_LEVEL`                       | `info` (`debug`/`info`/`warn`/`error`)   |
+| `CACHE_DRIVER` / `CACHE_TTL_SECONDS` | `memory` / `60`                       |
+| `QUEUE_DRIVER`                    | `memory`                                 |
+| `MAIL_DRIVER` / `MAIL_FROM`       | `log` / `Ecommerce Platform <no-reply@example.com>` |
+| `REDIS_URL`                       | empty; required for `redis`/`bullmq`     |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | empty / 587 / false; required for `smtp` |
+
+#### Docker Compose
+
+The root `docker-compose.yml` starts MongoDB, Redis and the API (Redis cache and
+BullMQ queue enabled). Secrets are read from the environment, so nothing is
+committed:
+
+```bash
+# Git Bash: generate throwaway local values for the required secrets
+export JWT_ACCESS_SECRET=$(openssl rand -hex 32)
+export JWT_REFRESH_SECRET=$(openssl rand -hex 32)
+export RAZORPAY_KEY_SECRET=local-dev-key-secret
+export RAZORPAY_WEBHOOK_SECRET=local-dev-webhook-secret
+
+docker compose up --build
+```
+
+The API is available at `http://localhost:5000/api/v1`.
+
+### Tests (Phase 12)
 
 ```bash
 cd server && npm test
@@ -346,12 +407,13 @@ cd client && npm test
 The server suite runs against a real local MongoDB database named
 `ecommerce_test` (`MONGODB_URI` can override it); collections are cleared between
 tests and the database is dropped at the end. Tests run serially to keep shared
-state predictable. The client suite runs in jsdom with Testing Library and
-covers formatting helpers, the `Button` primitive, and the route guards.
+state predictable. Background jobs are drained and the cache/outbox reset after
+every test. The client suite runs in jsdom with Testing Library and covers
+formatting helpers, the `Button` primitive, and the route guards.
 
 | Suite  | Files | Tests |
 | ------ | ----- | ----- |
-| Server | 6     | 41    |
+| Server | 8     | 49    |
 | Client | 3     | 12    |
 
 ### Design system

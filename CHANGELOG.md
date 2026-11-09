@@ -283,6 +283,33 @@ updatedAt }`; cancelling clears it and the detail page renders it.
   over formatting helpers, the `Button` primitive and the route guards.
 - **Phase 11** — shared test helpers for database lifecycle, auth cookies,
   tokens and factories for categories, products, addresses and coupons.
+- **Phase 12** — structured JSON logger with levels and child bindings, plus
+  request correlation: `X-Request-Id` is reused or generated, echoed on the
+  response, attached to every log line and propagated into queued jobs through
+  `AsyncLocalStorage`.
+- **Phase 12** — driver-based catalogue cache (`memory`, `redis`, `none`) with
+  read-through list/detail/category caching, TTL, JSON serialisation and
+  graceful fallback when Redis fails.
+- **Phase 12** — cache invalidation on product create/update/delete/stock,
+  category writes, review rating recomputation and order stock changes.
+- **Phase 12** — driver-based background queue (`memory`, `bullmq`, `none`) with
+  three BullMQ attempts, exponential backoff and completion/failure retention.
+- **Phase 12** — order email notifications for placed, confirmed, shipped,
+  delivered and cancelled events, with escaped HTML templates and driver-based
+  delivery (`log` outbox, SMTP/Nodemailer, `none`).
+- **Phase 12** — confirmation emails are sent only when a payment transitions to
+  paid, so webhook retries and repeated verification do not duplicate mail.
+- **Phase 12** — health endpoint reports the active cache, queue and mail
+  drivers.
+- **Phase 12** — index review with `isActive`-led compound indexes for newest,
+  price, rating, category/price and low-stock queries.
+- **Phase 12** — `npm run perf:indexes` explains those queries against 5,000
+  synthetic products in a throwaway database and drops it afterwards.
+- **Phase 12** — multi-stage server `Dockerfile`, `.dockerignore`, and a root
+  `docker-compose.yml` for the API, MongoDB and Redis.
+- **Phase 12** — server tests for request correlation, health driver reporting,
+  cache read-through/invalidation, and order notification idempotency
+  (49 tests across 8 files).
 
 ### Fixed
 
@@ -414,6 +441,25 @@ updatedAt }`; cancelling clears it and the detail page renders it.
 - CSRF uses the double-submit pattern: the token cookie is intentionally
   readable by the client, but a cross-site page cannot read it to fill the
   header.
+- Console logging was replaced by structured JSON logs with levels, so
+  production can ship lines to any collector and filter by `LOG_LEVEL`.
+- Cache, queue and mail use driver abstractions with in-process defaults. Redis,
+  BullMQ and SMTP are production choices, not requirements for local development
+  or tests.
+- Cache failures are logged and ignored: a stale or unavailable cache degrades
+  latency, never correctness.
+- Catalogue keys are namespaced (`catalog:products:*`, `catalog:categories:*`)
+  so invalidation is a prefix operation instead of tracking individual keys.
+- Notifications are fired after the business transaction succeeds and are
+  best-effort; a mail or queue failure never fails an order or payment request.
+- Email idempotency is enforced with the payment status transition
+  (`modifiedCount > 0`) rather than an extra dedupe table.
+- Query plans were measured, not assumed: the benchmark compares collection
+  scans with the declared indexes and only the indexes used by real queries were
+  added.
+- Compose passes secrets through environment interpolation with required
+  variables, so a missing secret stops the stack instead of booting with a
+  hardcoded default.
 - Rate limits are environment-driven, so tests can raise them and production can
   tighten them without code changes.
 
@@ -554,3 +600,25 @@ updatedAt }`; cancelling clears it and the detail page renders it.
   reset were removed afterwards.
 - Phase 11 gates: server and client `typecheck`, `lint`, `format:check` and
   `build` pass; the client build reports only the expected chunk-size advisory.
+- Phase 12 server suite: 49 tests across 8 files pass against the local
+  `ecommerce_test` database; the new infra suite covers request-id reuse and
+  replacement, health driver reporting, cache read-through plus invalidation
+  (direct and through an admin update), and notification tests cover placed,
+  confirmed (including duplicate verification), shipped, delivered and
+  cancellation idempotency.
+- Phase 12 index benchmark: 5,000 synthetic products; before indexes every query
+  was a `COLLSCAN` examining 5,000 documents in 9–11 ms; after indexes the plans
+  used the expected compound indexes, examined 1–20 documents and returned the
+  same rows in 1–2 ms. The text query used the text index at 25 ms. The
+  throwaway database was dropped.
+- Phase 12 live check: the built API started with structured logs, echoed a safe
+  `X-Request-Id`, reported memory/memory/log drivers at `/health`, and served the
+  product list.
+- Phase 12 gates: server `typecheck`, `lint`, `format:check` and `build` pass.
+- Phase 12 Docker files could not be executed because Docker is not installed on
+  this machine; the Compose file and Dockerfile are not runtime-verified here.
+- Phase 12 Redis/BullMQ and SMTP paths are implemented and type-checked but not
+  exercised locally for the same reason (no Redis or SMTP server available);
+  the memory and log drivers are what the suite and live check used.
+- `npm audit --omit=dev` reports 0 vulnerabilities; the 10 moderate advisories
+  remain in the ESLint `minimatch` chain (dev only).

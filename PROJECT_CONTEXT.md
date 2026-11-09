@@ -6,9 +6,9 @@ For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-09
-**Current phase:** Phase 11 — Testing and Security (complete, awaiting review)
-**Latest work:** Reviews module with rating aggregates, Helmet + strict CORS + rate limiting, CSRF double-submit on refresh/logout, token-version invalidation, and server/client Vitest suites
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11
+**Current phase:** Phase 12 — Advanced Backend Engineering (complete, awaiting review)
+**Latest work:** Structured request-correlated logging, driver-based Redis/memory catalogue cache with invalidation, memory/BullMQ email jobs with order notifications, index benchmark, and Docker Compose for API/MongoDB/Redis
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -203,21 +203,24 @@ customer lists use `?search`, `?active`/`?status`, `?page` and `?limit`.
 | Payment env  | `PAYMENT_MODE=mock` locally; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; production requires `razorpay` mode and a key id          |
 | Upload env   | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER` (default `ecommerce-platform`); uploads return `503` when unset |
 | Rate limits  | `RATE_LIMIT_WINDOW_MINUTES=15`, `RATE_LIMIT_MAX=300`, `AUTH_RATE_LIMIT_MAX=30`                                                                              |
+| Infra env    | `LOG_LEVEL=info`, `CACHE_DRIVER=memory`, `CACHE_TTL_SECONDS=60`, `QUEUE_DRIVER=memory`, `MAIL_DRIVER=log`, `MAIL_FROM`; `REDIS_URL` for redis/bullmq, `SMTP_*` for smtp |
 | Test DB      | `mongodb://127.0.0.1:27017/ecommerce_test` (set by `server/tests/setup.ts`, dropped after the suite)                                                        |
 | Admin seed   | `npm run seed:admin -- <email> <password> [name]`                                                                                                           |
 | Catalog seed | `npm run seed:catalog` (idempotent)                                                                                                                         |
 | VS Code      | 1.139.1                                                                                                                                                     |
 | GitHub CLI   | 2.103.3, authenticated as `Owais101074` (keyring)                                                                                                           |
 | GitHub repo  | `ecommerce-platform`, public, default branch `main`                                                                                                         |
-| Docker       | not installed (Phase 12)                                                                                                                                    |
+| Docker       | not installed; `Dockerfile` and `docker-compose.yml` added in Phase 12 but not runtime-verified locally                                                    |
+| Redis        | not installed; cache/queue default to in-process drivers                                                                                                    |
 
 ## 8. Installed dependencies
 
-**server — runtime:** express 5, mongoose 9, dotenv 18, zod 4, cors 2, morgan 1,
-bcryptjs 3, jsonwebtoken 9, cookie-parser 1, helmet 8, express-rate-limit 8.
+**server — runtime:** express 5, mongoose 9, dotenv 18, zod 4, cors 2,
+bcryptjs 3, jsonwebtoken 9, cookie-parser 1, helmet 8, express-rate-limit 8,
+ioredis 6, bullmq 6, nodemailer 10.
 **server — dev:** typescript 6, tsx 4, eslint 10, typescript-eslint 8,
 eslint-config-prettier 10, prettier 3, vitest 5, supertest 7, `@types/*` (incl.
-jsonwebtoken, cookie-parser, supertest).
+jsonwebtoken, cookie-parser, supertest, nodemailer).
 **client — runtime:** react 19, react-dom 19, react-router-dom 7, @tanstack/react-query 5,
 axios 1, lucide-react.
 **client — dev:** vite 8, @vitejs/plugin-react 6, typescript 6, tailwindcss 4,
@@ -520,6 +523,29 @@ jsdom, @testing-library/react, @testing-library/jest-dom, `@types/*`.
       and reviews; browser checks for guest and authenticated review flows
 - [ ] Close Phase 11 review
 
+### Phase 12 — Advanced Backend Engineering
+
+- [x] Structured JSON logger with levels, child bindings and Error serialisation
+- [x] Request correlation through `X-Request-Id` and `AsyncLocalStorage`, with
+      the id carried into queued jobs
+- [x] Driver-based cache (`memory`/`redis`/`none`) with read-through product,
+      category and detail caching plus TTL and failure fallback
+- [x] Cache invalidation for product, category, review-rating and order stock
+      writes
+- [x] Driver-based queue (`memory`/`bullmq`/`none`) with BullMQ retries and
+      exponential backoff
+- [x] Email templates and driver-based delivery (`log` outbox, SMTP, none)
+- [x] Order notifications for placed, confirmed, shipped, delivered and
+      cancelled, with idempotent payment confirmation
+- [x] Health endpoint reports active infrastructure drivers
+- [x] Index review and `npm run perf:indexes` before/after explain benchmark
+- [x] Multi-stage `Dockerfile`, `.dockerignore` and Compose services for API,
+      MongoDB and Redis
+- [x] Server tests for request correlation, cache invalidation and notification
+      idempotency (49 tests across 8 files)
+- [x] Server `typecheck`, `lint`, `format:check`, `build` and live API check
+- [ ] Close Phase 12 review
+
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
 twice.
@@ -541,7 +567,7 @@ twice.
 | 9     | Order lifecycle + cancellation/refund                                      | done        |
 | 10    | Admin dashboard, coupons and Cloudinary uploads                            | done        |
 | 11    | Reviews, security hardening and test suites                                | done        |
-| 12    | Redis, jobs, email, logging, Docker                                        | not started |
+| 12    | Redis cache, jobs, email, logging, indexes, Docker                         | done        |
 | 13    | Deployment + GitHub Actions                                                | not started |
 
 ## 11. Known bugs

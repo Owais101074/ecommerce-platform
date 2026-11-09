@@ -38,9 +38,9 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 | Database         | MongoDB 8.2 + Mongoose 9                                                                        |
 | Frontend         | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios       |
 | Tooling          | Git, GitHub CLI, ESLint 10, Prettier 3, Postman                                                 |
-| Current phase    | Phase 11 complete (reviews, security hardening, server and client test suites), awaiting review |
-| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11                                                            |
-| Next phase       | Phase 12 — Advanced Backend Engineering                                                         |
+| Current phase    | Phase 12 complete (cache, jobs, email, logging, indexes, Docker), awaiting review               |
+| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12                                                        |
+| Next phase       | Phase 13 — Deployment and CI/CD                                                                 |
 | API base         | `http://localhost:5000/api/v1`                                                                  |
 | Client base      | `http://localhost:5173`                                                                         |
 | Database (dev)   | `mongodb://127.0.0.1:27017/ecommerce_dev`                                                       |
@@ -494,7 +494,7 @@ screens share `AdminLayout` and live under `pages/Admin*Page.tsx`.
 | Address default      | First address auto-default, exactly one default                    | Checkout has one unambiguous pre-selection                |
 | Stock on order       | Conditional `$gte` decrement with rollback                         | Prevents overselling without transactions                 |
 | Testing              | Vitest + Supertest (server) and Vitest + Testing Library (client)  | Real HTTP and DOM behaviour instead of mocks              |
-| Docker               | Phase 12                                                           | Core behaviour first, packaging later                     |
+| Docker               | Multi-stage API image + Compose with MongoDB and Redis             | One command starts the production-like stack              |
 
 ---
 
@@ -815,7 +815,8 @@ collections exist, what `/api/v1` means, why money is stored in paise.
 - `ApiError` + central `errorHandler` handling Zod, Mongoose validation/cast,
   duplicate key, malformed JSON, unknown routes.
 - `notFound` middleware, 10kb body limits, CORS with credentials,
-  `x-powered-by` disabled, morgan logging in development.
+  `x-powered-by` disabled, development request logging (morgan; replaced by the
+  structured logger in Phase 12).
 - Graceful shutdown on SIGINT/SIGTERM with a 10-second forced exit,
   plus `unhandledRejection` / `uncaughtException` handling.
 - `GET /api/v1/health` returning uptime and `database: "connected"`.
@@ -1458,18 +1459,94 @@ environment-driven rate limits.
 
 ---
 
-### Phase 12 — Advanced Backend Engineering — **PLANNED**
+### Phase 12 — Advanced Backend Engineering — **DONE**
 
 **Goal:** production behaviour under load.
 
-**Will deliver:**
+**Delivered:**
 
-- Redis caching for product listings and categories with invalidation.
-- Background jobs (emails, cleanup, payment reconciliation).
-- Email notifications for orders and account events.
-- Structured logging with request correlation.
-- Database index review and performance measurement.
-- Docker and Docker Compose for API, MongoDB and Redis.
+- `utils/logger.ts` emits JSON lines with `debug`/`info`/`warn`/`error`
+  filtering, a `service` binding, child loggers, Error serialisation and a
+  circular-safe fallback. `LOG_LEVEL` controls verbosity.
+- `middleware/requestContext.ts` assigns a request id, reusing a safe incoming
+  `X-Request-Id` (`[A-Za-z0-9._-]{8,128}`) or generating a UUID, sets
+  `req.id`/`req.log`, echoes the header, logs `http.request` with method, path,
+  status, duration and user id, and runs the request inside
+  `AsyncLocalStorage`.
+- `utils/requestContext.ts` exposes `runWithRequestContext` and `getRequestId`,
+  so queued jobs inherit the originating request id without changing service
+  signatures. `morgan` was removed.
+- `infra/cache.ts` defines one store interface with three drivers: `memory`
+  (Map + TTL, the development/test default), `redis` (ioredis, `SCAN` + `DEL`
+  prefix invalidation) and `none`. `cached(key, loader, ttl)` is read-through,
+  serialises JSON, falls back to the loader on any cache error and logs the
+  failure instead of failing the request.
+- Catalogue keys are namespaced: list keys hash the validated query, detail keys
+  use the slug, category keys use list/detail prefixes. `invalidateProductCache`,
+  `invalidateCategoryCache` and `invalidateCatalogCache` expose prefix
+  invalidation; `resetCache` and `closeCache` serve tests and shutdown.
+- Product list/detail, category list/detail reads go through the cache. Writes
+  invalidate: product create/update/soft-delete/stock, category writes, review
+  rating recomputation and order stock changes (place, cancel).
+- `infra/queue.ts` is a driver-based job queue. `memory` runs in-process and
+  exposes `waitForQueueIdle` for tests and shutdown; `bullmq` uses a Queue +
+  Worker with three attempts, exponential backoff, concurrency 2 and capped
+  completed/failed retention; `none` drops jobs. `enqueueEmail` degrades to a log
+  entry if Redis is unavailable.
+- `notifications/mail.templates.ts` builds escaped HTML and text for placed,
+  confirmed, shipped, delivered and cancelled orders, with INR formatting and
+  tracking details when present. `notifications/mailer.ts` supports `log`
+  (capped in-memory outbox, the default), `smtp` (Nodemailer) and `none`.
+- `notifications/order.notifications.ts` resolves the customer, builds the
+  message and enqueues it. Notification failures are logged and swallowed, so an
+  order never fails because mail is down.
+- Order flows notify: placement, actual cancellation (only when the conditional
+  update changed the order), admin shipped and delivered. Payment confirmation
+  notifies only when `Payment.updateOne` changed a non-paid payment, so webhook
+  retries and repeated verification send one email.
+- `/health` reports `infrastructure: { cache, queue, mail }` next to the database
+  state, and startup/shutdown log the active drivers. Shutdown drains the memory
+  queue, closes the cache and mailer, then disconnects MongoDB.
+- Index review: product reads always filter `isActive`, so the model now declares
+  `(isActive, createdAt)`, `(isActive, price)`, `(isActive, ratingAvg)`,
+  `(isActive, stock)` and `(categoryId, isActive, price)`; the standalone
+  `createdAt` index was replaced. Orders, reviews, payments and coupons already
+  had indexes matching their access patterns.
+- `npm run perf:indexes` (`src/scripts/indexPerf.ts`) creates 5,000 synthetic
+  products in a separate `ecommerce_perf` database, measures five catalogue
+  queries before and after `syncIndexes`, prints index name, keys/docs examined,
+  rows returned and milliseconds, then drops the database. It refuses to run
+  unless the database name contains `ecommerce_perf`.
+- Multi-stage `server/Dockerfile` (build → production-only runtime, non-root
+  `node` user, HTTP healthcheck), `server/.dockerignore`, and root
+  `docker-compose.yml` with MongoDB 7, Redis 7 and the API wired to the Redis
+  cache and BullMQ queue. Secrets come from required environment interpolation,
+  so Compose refuses to start without them.
+- Tests: `tests/setup.ts` sets quiet logs and memory/log drivers and, after every
+  test, drains the queue, clears the mail outbox and resets the cache.
+  `tests/infra.test.ts` covers request-id reuse/replacement, health driver
+  reporting, cache read-through/staleness/invalidation and admin-write
+  invalidation. `tests/notifications.test.ts` covers placed, confirmed
+  (including a duplicate verify), shipped, delivered and cancellation
+  idempotency. Total: 49 tests across 8 files.
+
+**Verification:** 49/49 server tests pass. The index benchmark showed every
+catalogue query as a `COLLSCAN` over 5,000 documents at 9–11 ms before, and the
+expected compound indexes examining 1–20 documents at 1–2 ms after. The built
+API started with structured logs, echoed `X-Request-Id: live-check-1234`,
+reported `memory/memory/log` at `/health` and served product data.
+`typecheck`, `lint`, `format:check` and `build` pass; `npm audit --omit=dev`
+reports 0 vulnerabilities. Docker, Redis/BullMQ and SMTP could not be exercised
+because those services are not installed on this machine; that limitation is
+recorded instead of claimed as verified.
+
+**Key concepts learned:** dependency inversion for infrastructure (same service
+code works with in-process and distributed drivers), cache-aside with namespaced
+prefix invalidation, fail-open caching, at-least-once job delivery and why
+handlers must be idempotent, correlating logs across asynchronous work with
+`AsyncLocalStorage`, designing indexes from measured query plans instead of
+guessing, and packaging a Node API with multi-stage builds and Compose service
+health dependencies.
 
 ---
 
@@ -2378,11 +2455,11 @@ accidentally skipped.
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Payments              | No real merchant credentials are used here, so development runs `PAYMENT_MODE=mock`; the `razorpay` path is coded but not exercised against the live API | Swap test keys into `server/.env` and set `PAYMENT_MODE=razorpay` |
 | Refunds               | Refunds are implemented for cancellation, but there is no standalone admin refund screen or partial-refund UI                                            | Add partial refunds and a refund audit view if required           |
-| Webhook retries       | The endpoint is idempotent but no queue/backoff is added for failed processing                                                                           | Phase 12                                                          |
+| Webhook retries       | The endpoint is idempotent, but failed webhook processing is not queued; Razorpay retries the HTTP call itself                                           | Queue webhook follow-up work if a side effect needs retries       |
 | Order lifecycle       | Customer cancel and admin confirm/ship/deliver/cancel are implemented; tracking is manual, not fed by a carrier API                                      | Carrier integration later                                         |
 | Coupons               | One code per order, no stacking, automatic campaigns or per-customer limits                                                                              | Extend the pricing service when those rules are required          |
 | Cloudinary            | Uploads need `CLOUDINARY_*` credentials; without them the endpoint returns `503` and products use image URLs                                             | Add credentials to `server/.env` to exercise real uploads         |
-| Stock safety          | Conditional updates with rollback, not MongoDB transactions                                                                                              | Transactions need a replica set; document in Phase 12             |
+| Stock safety          | Conditional updates with rollback, not MongoDB transactions; multi-document atomicity needs a replica set                                                | Enable a replica set and wrap order/stock/refund writes in a transaction if required |
 | Profile API           | Name and password only; email changes and avatar upload are not built                                                                                    | Later                                                             |
 | Client tests          | Component and guard tests only; no page-level integration or browser E2E suite                                                                           | Add Playwright later                                              |
 | UI verification       | No screenshots captured; in-app browser had no viewport                                                                                                  | Re-check visuals when a real browser is available                 |
@@ -2390,12 +2467,12 @@ accidentally skipped.
 | Product images        | Uploads are Cloudinary-only and require credentials                                                                                                      | Add credentials to `server/.env`                                  |
 | Ratings               | Reviews and aggregates exist, but reviews are not purchase-verified and there is no delete or moderation flow                                            | Add verified-purchase, delete and moderation later                |
 | Multi-device sessions | One refresh hash per user                                                                                                                                | Sessions collection later                                         |
-| Automated tests       | 41 server and 12 client tests; no E2E suite and no coverage threshold                                                                                    | Add E2E and coverage gates later                                  |
-| Rate limiting         | In-memory per process; a multi-instance deployment would count each instance separately                                                                  | Move to a shared Redis store in Phase 12                          |
+| Automated tests       | 49 server and 12 client tests; no E2E suite and no coverage threshold                                                                                    | Add E2E and coverage gates later                                  |
+| Rate limiting         | Still in-memory per process; the Redis driver is used for cache/jobs, not yet for express-rate-limit                                                     | Add a Redis rate-limit store before running multiple API replicas |
 | CSRF token            | Double-submit covers cookie-authenticated refresh/logout; Bearer routes rely on CORS and the custom header                                               | Keep in sync if cookies are added to other routes                 |
 | Swagger/OpenAPI       | Not implemented                                                                                                                                          | Optional later                                                    |
-| Redis, jobs, email    | Not implemented                                                                                                                                          | Phase 12                                                          |
-| Docker                | Not installed                                                                                                                                            | Phase 12                                                          |
+| Redis, jobs, email    | Drivers are implemented, but Redis/BullMQ and SMTP were not runtime-verified locally (no services installed); memory/log drivers are the tested default | Run the Redis/SMTP paths once those services are available        |
+| Docker                | `Dockerfile` and Compose are written but could not be built or run here                                                                                  | Verify `docker compose up --build` on a machine with Docker       |
 | Deployment/CI         | Not implemented                                                                                                                                          | Phase 13                                                          |
 | Admin seed cleanup    | Test admin deleted after verification                                                                                                                    | Create your own with the script                                   |
 
@@ -2405,10 +2482,10 @@ Known bugs: none.
 
 ## 16. Next step
 
-Phase 12 — Advanced Backend Engineering: Redis caching for catalogue reads with
-invalidation, background jobs and email notifications, structured logging with
-request correlation, an index/performance review, a shared rate-limit store, and
-Docker Compose for the API, MongoDB and Redis.
+Phase 13 — Deployment and CI/CD: deploy client and API, provision production
+MongoDB, manage environment variables and secrets, configure a domain and HTTPS,
+add GitHub Actions for typecheck/lint/test/build, and run production smoke
+tests.
 
 Do not start until the reviewer explicitly says:
 
