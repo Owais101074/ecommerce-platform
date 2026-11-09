@@ -23,6 +23,13 @@ const envSchema = z
     RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
+    // Number of proxy hops in front of Express. Hosts such as Render and
+    // Railway put exactly one, which makes req.ip and rate limits per client.
+    TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+    // 'none' is required when the client and API are on different sites.
+    COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+    // Optional parent domain, for example .example.com, to share cookies across subdomains.
+    COOKIE_DOMAIN: z.string().trim().default(''),
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
     REDIS_URL: z.string().trim().default(''),
     CACHE_DRIVER: z.enum(['memory', 'redis', 'none']).default('memory'),
@@ -61,6 +68,33 @@ const envSchema = z
     message: 'PAYMENT_MODE must be razorpay in production',
     path: ['PAYMENT_MODE'],
   })
+  .refine((data) => data.COOKIE_SAMESITE !== 'none' || data.NODE_ENV === 'production', {
+    message:
+      'COOKIE_SAMESITE=none requires NODE_ENV=production because browsers only accept it on Secure cookies',
+    path: ['COOKIE_SAMESITE'],
+  })
+  .refine(
+    (data) => {
+      if (data.NODE_ENV !== 'production') {
+        return true;
+      }
+
+      const origins = data.CORS_ORIGIN.split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+
+      return (
+        origins.length > 0 &&
+        origins.every(
+          (origin) => origin.startsWith('https://') && !/localhost|127\.0\.0\.1/.test(origin),
+        )
+      );
+    },
+    {
+      message: 'CORS_ORIGIN must list HTTPS, non-localhost origins in production',
+      path: ['CORS_ORIGIN'],
+    },
+  )
   .refine((data) => data.PAYMENT_MODE !== 'razorpay' || data.RAZORPAY_KEY_ID.length > 0, {
     message: 'RAZORPAY_KEY_ID is required when PAYMENT_MODE is razorpay',
     path: ['RAZORPAY_KEY_ID'],
@@ -91,3 +125,9 @@ if (!parsed.success) {
 }
 
 export const env: Env = parsed.data;
+
+if (env.NODE_ENV === 'production' && env.TRUST_PROXY === 0) {
+  console.warn(
+    '[env] TRUST_PROXY=0 in production. Behind a hosting proxy set TRUST_PROXY=1 so rate limits see real client IPs.',
+  );
+}

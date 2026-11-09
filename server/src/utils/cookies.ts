@@ -6,17 +6,24 @@ const REFRESH_COOKIE = 'refreshToken';
 
 export const CSRF_COOKIE_NAME = 'csrfToken';
 
-const baseOptions: CookieOptions = {
-  httpOnly: true,
+// Secure is always on in production. SameSite becomes 'none' only when the
+// client is on a different site than the API; env validation enforces the
+// Secure pairing that browsers require for that mode.
+const sharedOptions = {
   secure: env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  sameSite: env.COOKIE_SAMESITE,
+  ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
+};
+
+const baseOptions: CookieOptions = {
+  ...sharedOptions,
+  httpOnly: true,
   path: '/api/v1/auth',
 };
 
 const csrfOptions: CookieOptions = {
+  ...sharedOptions,
   httpOnly: false,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax',
   path: '/',
 };
 

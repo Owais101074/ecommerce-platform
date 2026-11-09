@@ -25,6 +25,12 @@ import wishlistRoutes from './modules/wishlist/wishlist.routes';
 
 export const app = express();
 
+// Hosting proxies terminate TLS and forward the client IP. Trusting exactly
+// one hop keeps rate limiting per client without trusting spoofed headers.
+if (env.TRUST_PROXY > 0) {
+  app.set('trust proxy', env.TRUST_PROXY);
+}
+
 const allowedOrigins = env.CORS_ORIGIN.split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
