@@ -2035,6 +2035,8 @@ browser reports a 0×0 hidden viewport.
 | `6b273d5` | docs: record phase 10 in project guide                                 |
 | `1016a8c` | feat(testing): add reviews, security hardening and test suites         |
 | `d32c446` | docs: record phase 11 testing and security                             |
+| `cbddfc6` | feat(infra): add caching, jobs, logging and Docker setup               |
+| `592281b` | docs: record phase 12 advanced backend                                 |
 
 ---
 
