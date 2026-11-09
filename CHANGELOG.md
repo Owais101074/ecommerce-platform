@@ -657,4 +657,7 @@ updatedAt }`; cancelling clears it and the detail page renders it.
   configuration and runbook are complete, and the remaining steps are listed in
   `docs/deployment.md`.
 - `render.yaml`, `client/vercel.json` and `.github/workflows/ci.yml` parse
-  successfully; the CI workflow's first real run happens on the Phase 13 push.
+  successfully. The workflow ran on the Phase 13 pushes: both the server job
+  (MongoDB 7 service, 53 tests) and the client job (12 tests) passed on
+  `27fba46`, with no Node 20 action deprecation after bumping to
+  `actions/checkout@v7` and `actions/setup-node@v7`.

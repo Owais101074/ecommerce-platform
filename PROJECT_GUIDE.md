@@ -2082,6 +2082,11 @@ browser reports a 0×0 hidden viewport.
 | `d32c446` | docs: record phase 11 testing and security                             |
 | `cbddfc6` | feat(infra): add caching, jobs, logging and Docker setup               |
 | `592281b` | docs: record phase 12 advanced backend                                 |
+| `7e1e405` | docs: record phase 12 commit history                                   |
+| `9bdc5af` | docs: note deferred scheduled jobs in phase 12                         |
+| `7aef6f5` | feat(deploy): add production config and CI pipeline                    |
+| `86c5a62` | docs: record phase 13 deployment and CI                                |
+| `27fba46` | ci: use current checkout and setup-node actions                        |
 
 ---
 
@@ -2528,7 +2533,7 @@ accidentally skipped.
 | Scheduled jobs        | The queue currently carries email jobs only; cleanup and payment-reconciliation jobs are not implemented                                                                | Add repeatable BullMQ jobs for abandoned carts, stale payments and retention         |
 | Docker                | `Dockerfile` and Compose are written but could not be built or run here                                                                                                 | Verify `docker compose up --build` on a machine with Docker                          |
 | Live deployment       | Repository configuration, CI and the runbook are complete, but no public hosts are provisioned because that needs the owner's Atlas/Render/Vercel/payment/SMTP accounts | Follow `docs/deployment.md`                                                          |
-| CI verification       | The workflow is committed; its first run happens on the Phase 13 push                                                                                                   | Check the Actions tab and fix any runner-only issue                                  |
+| CI verification       | The workflow passed on GitHub Actions (`27fba46`): server 53 tests with the MongoDB service and client 12 tests, both jobs green                                        | Keep main green and require the checks before merging                                |
 | Admin seed cleanup    | Test admin deleted after verification                                                                                                                                   | Create your own with the script                                                      |
 
 Known bugs: none.

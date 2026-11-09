@@ -568,6 +568,7 @@ jsdom, @testing-library/react, @testing-library/jest-dom, `@types/*`.
       cookies/CORS, smoke tests, rollback, troubleshooting
 - [x] Server and client `typecheck`, `lint`, `format:check`, `build`, tests
 - [x] Production-mode live check of cookie flags, CORS, health and request id
+- [x] GitHub Actions verified on push: server and client jobs both pass
 - [ ] Provision live hosts and record public URLs (needs owner accounts)
 - [ ] Close Phase 13 review
 
