@@ -1,12 +1,23 @@
 import { app } from './app';
 import { connectDB, disconnectDB } from './config/db';
 import { env } from './config/env';
+import { closeCache } from './infra/cache';
+import { startQueue, stopQueue } from './infra/queue';
+import { closeMailer } from './modules/notifications/mailer';
+import { logger } from './utils/logger';
 
 const start = async (): Promise<void> => {
   await connectDB();
+  await startQueue();
 
   const server = app.listen(env.PORT, () => {
-    console.log(`[server] API listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
+    logger.info('server.started', {
+      port: env.PORT,
+      environment: env.NODE_ENV,
+      cacheDriver: env.CACHE_DRIVER,
+      queueDriver: env.QUEUE_DRIVER,
+      mailDriver: env.MAIL_DRIVER,
+    });
   });
 
   let isShuttingDown = false;
@@ -16,16 +27,19 @@ const start = async (): Promise<void> => {
       return;
     }
     isShuttingDown = true;
-    console.log(`[server] ${signal} received, shutting down`);
+    logger.info('server.shutdown', { signal });
 
     setTimeout(() => {
-      console.error('[server] forced shutdown after 10s');
+      logger.error('server.forced-shutdown');
       process.exit(1);
     }, 10_000).unref();
 
     server.close(async () => {
+      await stopQueue().catch(() => undefined);
+      await closeCache().catch(() => undefined);
+      closeMailer();
       await disconnectDB();
-      console.log('[server] shutdown complete');
+      logger.info('server.stopped');
       process.exit(0);
     });
   };
@@ -35,17 +49,19 @@ const start = async (): Promise<void> => {
 };
 
 process.on('unhandledRejection', (reason) => {
-  console.error('[server] unhandled rejection:', reason);
+  logger.error('process.unhandled-rejection', { reason });
   process.exit(1);
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('[server] uncaught exception:', error);
+  logger.error('process.uncaught-exception', { err: error });
   process.exit(1);
 });
 
 start().catch(async (error) => {
-  console.error('[server] failed to start:', error);
+  logger.error('server.start-failed', { err: error });
+  await stopQueue().catch(() => undefined);
+  await closeCache().catch(() => undefined);
   await disconnectDB().catch(() => undefined);
   process.exit(1);
 });

@@ -1,10 +1,13 @@
 import { randomBytes } from 'node:crypto';
+import { invalidateProductCache } from '../../infra/cache';
 import { ApiError } from '../../utils/ApiError';
+import { logger } from '../../utils/logger';
 import { Address } from '../addresses/address.model';
 import type { AddressDocument } from '../addresses/address.model';
 import { User } from '../auth/auth.model';
 import * as cartService from '../cart/cart.service';
 import { claimCoupon, releaseCoupon, resolveCoupon } from '../coupons/coupon.service';
+import { notifyOrder } from '../notifications/order.notifications';
 import * as paymentService from '../payments/payment.service';
 import { Product } from '../products/product.model';
 import { calculateOrderPricing } from './order.pricing';
@@ -164,6 +167,8 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
   }
 
   await cartService.clearCart(userId);
+  await invalidateProductCache();
+  await notifyOrder(order, 'placed');
 
   return toOrderDTO(order);
 }
@@ -236,11 +241,14 @@ async function cancelOrderDocument(
     } else {
       cancelled = changed;
       await restoreStock(cancelled.items);
+      await invalidateProductCache();
 
       // A cancelled order should not keep burning a limited coupon run.
       if (cancelled.couponCode) {
         await releaseCoupon(cancelled.couponCode);
       }
+
+      await notifyOrder(cancelled, 'cancelled');
     }
   }
 
@@ -257,7 +265,7 @@ async function cancelOrderDocument(
       }
     } catch (error) {
       // The order is already cancelled, so surface a pending refund instead of failing the request.
-      console.error('[orders] Refund failed during cancellation', error);
+      logger.error('orders.refund-failed', { orderId: cancelled._id.toString(), err: error });
       refundPending = true;
     }
   }
@@ -388,6 +396,10 @@ export async function updateOrderStatus(
     }
 
     updated = changed;
+
+    if (input.status === 'shipped' || input.status === 'delivered') {
+      await notifyOrder(updated, input.status);
+    }
   }
 
   return { order: await toAdminOrder(updated), refundPending };

@@ -87,8 +87,12 @@ const productSchema = new Schema<IProduct>(
   { timestamps: true },
 );
 
-productSchema.index({ categoryId: 1, price: 1 });
-productSchema.index({ createdAt: -1 });
+// Product reads always filter isActive, so it leads every compound index.
+productSchema.index({ isActive: 1, createdAt: -1 });
+productSchema.index({ isActive: 1, price: 1 });
+productSchema.index({ isActive: 1, ratingAvg: -1 });
+productSchema.index({ isActive: 1, stock: 1 });
+productSchema.index({ categoryId: 1, isActive: 1, price: 1 });
 productSchema.index({ name: 'text', description: 'text' });
 
 export type ProductDocument = HydratedDocument<IProduct>;

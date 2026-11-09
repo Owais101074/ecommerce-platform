@@ -1,5 +1,7 @@
 import { env } from '../../config/env';
 import { ApiError } from '../../utils/ApiError';
+import { logger } from '../../utils/logger';
+import { notifyOrder } from '../notifications/order.notifications';
 import { Order } from '../orders/order.model';
 import type { OrderDocument } from '../orders/order.model';
 import { toPaymentDTO } from './payment.mapper';
@@ -70,7 +72,9 @@ async function confirmPayment(
   providerPaymentId: string,
   rawPayload: unknown,
 ): Promise<void> {
-  await Payment.updateOne(
+  // modifiedCount tells us this call performed the transition: webhook retries and
+  // verify-after-webhook must not send a second confirmation email.
+  const claimed = await Payment.updateOne(
     { _id: payment._id, status: { $ne: 'paid' } },
     {
       $set: {
@@ -97,14 +101,22 @@ async function confirmPayment(
     },
   );
 
-  const order = await Order.findById(payment.orderId).select('status');
+  const order = await Order.findById(payment.orderId);
 
   if (order?.status === 'cancelled') {
     try {
       await refundOrderPayment(payment.orderId.toString());
     } catch (error) {
-      console.error('[payments] Late payment could not be refunded', error);
+      logger.error('payments.late-refund-failed', {
+        orderId: payment.orderId.toString(),
+        err: error,
+      });
     }
+    return;
+  }
+
+  if (claimed.modifiedCount > 0 && order) {
+    await notifyOrder(order, 'confirmed');
   }
 }
 
@@ -375,7 +387,7 @@ export async function handleWebhookEvent(
     entity.amount !== payment.amount ||
     (entity.currency && entity.currency !== payment.currency)
   ) {
-    console.error(`[payments] Webhook amount mismatch for provider order ${entity.order_id}`);
+    logger.warn('payments.webhook-amount-mismatch', { providerOrderId: entity.order_id });
     return { handled: false };
   }
 

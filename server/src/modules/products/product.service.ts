@@ -1,4 +1,5 @@
 import type { QueryFilter, Types } from 'mongoose';
+import { invalidateProductCache } from '../../infra/cache';
 import { ApiError } from '../../utils/ApiError';
 import { generateUniqueSlug } from '../../utils/slug';
 import { Category } from '../categories/category.model';
@@ -175,6 +176,8 @@ export async function createProduct(input: CreateProductInput) {
     stock: input.stock,
   });
 
+  await invalidateProductCache();
+
   return toProductDTO(product, toCategorySummary(category));
 }
 
@@ -224,6 +227,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   }
 
   await product.save();
+  await invalidateProductCache();
 
   if (!categorySummary) {
     categorySummary = await findCategorySummary(product.categoryId);
@@ -241,6 +245,7 @@ export async function deleteProduct(id: string): Promise<void> {
 
   product.isActive = false;
   await product.save();
+  await invalidateProductCache();
 }
 
 export async function updateStock(id: string, stock: number) {
@@ -252,6 +257,7 @@ export async function updateStock(id: string, stock: number) {
 
   product.stock = stock;
   await product.save();
+  await invalidateProductCache();
 
   return toProductDTO(product, await findCategorySummary(product.categoryId));
 }

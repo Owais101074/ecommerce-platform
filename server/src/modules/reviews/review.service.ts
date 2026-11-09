@@ -1,4 +1,5 @@
 import type { Types } from 'mongoose';
+import { invalidateProductCache } from '../../infra/cache';
 import { ApiError } from '../../utils/ApiError';
 import { User } from '../auth/auth.model';
 import { Product } from '../products/product.model';
@@ -65,6 +66,7 @@ async function refreshProductRating(product: ProductDocument): Promise<void> {
   product.ratingAvg = stats ? Math.round(stats.average * 10) / 10 : 0;
   product.ratingCount = stats?.count ?? 0;
   await product.save();
+  await invalidateProductCache();
 }
 
 export async function listProductReviews(

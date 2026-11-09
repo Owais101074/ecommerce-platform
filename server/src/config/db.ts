@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 import { env } from './env';
 
 const states: Record<number, string> = {
@@ -11,15 +12,18 @@ const states: Record<number, string> = {
 
 export const connectDB = async (): Promise<void> => {
   mongoose.connection.on('connected', () => {
-    console.log(`[db] MongoDB connected: ${mongoose.connection.host}/${mongoose.connection.name}`);
+    logger.info('db.connected', {
+      host: mongoose.connection.host,
+      database: mongoose.connection.name,
+    });
   });
 
   mongoose.connection.on('disconnected', () => {
-    console.warn('[db] MongoDB disconnected');
+    logger.warn('db.disconnected');
   });
 
   mongoose.connection.on('error', (error) => {
-    console.error('[db] MongoDB connection error:', error);
+    logger.error('db.error', { err: error });
   });
 
   await mongoose.connect(env.MONGODB_URI, {

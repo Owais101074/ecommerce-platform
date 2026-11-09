@@ -1,3 +1,4 @@
+import { invalidateCatalogCache } from '../../infra/cache';
 import { ApiError } from '../../utils/ApiError';
 import { generateUniqueSlug } from '../../utils/slug';
 import { Product } from '../products/product.model';
@@ -94,6 +95,8 @@ export async function createCategory(input: CreateCategoryInput): Promise<Catego
     parentId: input.parentId ?? null,
   });
 
+  await invalidateCatalogCache();
+
   return { ...toCategoryDTO(category), children: [] };
 }
 
@@ -126,6 +129,7 @@ export async function updateCategory(
   }
 
   await category.save();
+  await invalidateCatalogCache();
 
   return { ...toCategoryDTO(category), children: [] };
 }
@@ -151,4 +155,5 @@ export async function deleteCategory(id: string): Promise<void> {
 
   category.isActive = false;
   await category.save();
+  await invalidateCatalogCache();
 }

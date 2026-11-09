@@ -1,15 +1,21 @@
 import type { Request, Response } from 'express';
+import { cacheKeys, cached } from '../../infra/cache';
 import { sendSuccess } from '../../utils/ApiResponse';
 import * as categoryService from './category.service';
 import type { CreateCategoryInput, UpdateCategoryInput } from './category.validation';
 
 export async function list(_req: Request, res: Response): Promise<void> {
-  const categories = await categoryService.listCategories();
+  const categories = await cached(cacheKeys.categoryList(), () => categoryService.listCategories());
+
   sendSuccess(res, 200, 'Categories fetched', { categories });
 }
 
 export async function getBySlug(req: Request, res: Response): Promise<void> {
-  const category = await categoryService.getCategoryBySlug(req.params.slug as string);
+  const slug = req.params.slug as string;
+  const category = await cached(cacheKeys.categoryDetail(slug), () =>
+    categoryService.getCategoryBySlug(slug),
+  );
+
   sendSuccess(res, 200, 'Category fetched', { category });
 }
 

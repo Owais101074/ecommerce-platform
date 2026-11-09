@@ -36,7 +36,7 @@ const isHttpError = (error: unknown): error is HttpError => {
   );
 };
 
-export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
   if (res.headersSent) {
     return next(error);
   }
@@ -79,9 +79,9 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
   }
 
   if (statusCode >= 500) {
-    console.error('[error]', error);
-  } else if (env.NODE_ENV === 'development') {
-    console.warn(`[error] ${statusCode} ${message}`);
+    req.log.error('http.error', { statusCode, message, err: error });
+  } else {
+    req.log.warn('http.error', { statusCode, message });
   }
 
   const body: Record<string, unknown> = { success: false, message };

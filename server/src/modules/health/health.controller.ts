@@ -16,6 +16,11 @@ export const getHealth = (_req: Request, res: Response): Response => {
       environment: env.NODE_ENV,
       uptime: Math.floor(process.uptime()),
       database,
+      infrastructure: {
+        cache: env.CACHE_DRIVER,
+        queue: env.QUEUE_DRIVER,
+        mail: env.MAIL_DRIVER,
+      },
       timestamp: new Date().toISOString(),
     },
   );

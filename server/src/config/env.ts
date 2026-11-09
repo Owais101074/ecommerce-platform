@@ -23,6 +23,21 @@ const envSchema = z
     RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
+    LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+    REDIS_URL: z.string().trim().default(''),
+    CACHE_DRIVER: z.enum(['memory', 'redis', 'none']).default('memory'),
+    CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+    QUEUE_DRIVER: z.enum(['memory', 'bullmq', 'none']).default('memory'),
+    MAIL_DRIVER: z.enum(['log', 'smtp', 'none']).default('log'),
+    MAIL_FROM: z.string().trim().default('Ecommerce Platform <no-reply@example.com>'),
+    SMTP_HOST: z.string().trim().default(''),
+    SMTP_PORT: z.coerce.number().int().positive().default(587),
+    SMTP_SECURE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    SMTP_USER: z.string().trim().default(''),
+    SMTP_PASS: z.string().trim().default(''),
     PAYMENT_MODE: z.enum(['mock', 'razorpay']).default('mock'),
     RAZORPAY_KEY_ID: z.string().trim().default(''),
     RAZORPAY_KEY_SECRET: z
@@ -49,6 +64,18 @@ const envSchema = z
   .refine((data) => data.PAYMENT_MODE !== 'razorpay' || data.RAZORPAY_KEY_ID.length > 0, {
     message: 'RAZORPAY_KEY_ID is required when PAYMENT_MODE is razorpay',
     path: ['RAZORPAY_KEY_ID'],
+  })
+  .refine((data) => data.CACHE_DRIVER !== 'redis' || data.REDIS_URL.length > 0, {
+    message: 'REDIS_URL is required when CACHE_DRIVER is redis',
+    path: ['REDIS_URL'],
+  })
+  .refine((data) => data.QUEUE_DRIVER !== 'bullmq' || data.REDIS_URL.length > 0, {
+    message: 'REDIS_URL is required when QUEUE_DRIVER is bullmq',
+    path: ['REDIS_URL'],
+  })
+  .refine((data) => data.MAIL_DRIVER !== 'smtp' || data.SMTP_HOST.length > 0, {
+    message: 'SMTP_HOST is required when MAIL_DRIVER is smtp',
+    path: ['SMTP_HOST'],
   });
 
 export type Env = z.infer<typeof envSchema>;

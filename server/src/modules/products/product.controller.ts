@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { cacheKeys, cached } from '../../infra/cache';
 import { sendSuccess } from '../../utils/ApiResponse';
 import * as productService from './product.service';
 import type {
@@ -9,7 +10,11 @@ import type {
 } from './product.validation';
 
 export async function list(req: Request, res: Response): Promise<void> {
-  const result = await productService.listProducts(req.validatedQuery as ProductQuery);
+  const query = req.validatedQuery as ProductQuery;
+  const result = await cached(cacheKeys.productList(query), () =>
+    productService.listProducts(query),
+  );
+
   sendSuccess(
     res,
     200,
@@ -22,7 +27,11 @@ export async function list(req: Request, res: Response): Promise<void> {
 }
 
 export async function getBySlug(req: Request, res: Response): Promise<void> {
-  const product = await productService.getProductBySlug(req.params.slug as string);
+  const slug = req.params.slug as string;
+  const product = await cached(cacheKeys.productDetail(slug), () =>
+    productService.getProductBySlug(slug),
+  );
+
   sendSuccess(res, 200, 'Product fetched', { product });
 }
 

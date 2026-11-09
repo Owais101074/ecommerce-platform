@@ -3,10 +3,10 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
-import morgan from 'morgan';
 import { env } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
+import { requestContext } from './middleware/requestContext';
 import { ApiError } from './utils/ApiError';
 import addressRoutes from './modules/addresses/address.routes';
 import adminRoutes from './modules/admin/admin.routes';
@@ -31,6 +31,7 @@ const allowedOrigins = env.CORS_ORIGIN.split(',')
 
 app.disable('x-powered-by');
 app.use(helmet());
+app.use(requestContext);
 app.use(
   cors({
     origin(origin, callback) {
@@ -80,10 +81,6 @@ app.use(
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
-
-if (env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
 
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
