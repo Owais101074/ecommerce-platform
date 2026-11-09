@@ -6,9 +6,9 @@ For a full project explanation (phases, architecture, workflows, interview Q&A),
 read [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 **Last updated:** 2026-11-09
-**Current phase:** Phase 12 — Advanced Backend Engineering (complete, awaiting review)
-**Latest work:** Structured request-correlated logging, driver-based Redis/memory catalogue cache with invalidation, memory/BullMQ email jobs with order notifications, index benchmark, and Docker Compose for API/MongoDB/Redis
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12
+**Current phase:** Phase 13 — Deployment and CI/CD (complete, awaiting review)
+**Latest work:** Environment-driven production cookies/CORS/proxy trust, liveness and readiness probes, Render blueprint, Vercel SPA config, GitHub Actions CI, deployment runbook and deployment tests
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12, Phase 13
 **Git branch:** `main` (tracking `origin/main`)
 **Repository:** https://github.com/Owais101074/ecommerce-platform (public)
 
@@ -87,6 +87,9 @@ ecommerce-platform/
 | Auth                   | 15 min access token + 7 day refresh token in httpOnly cookie                                                     | XSS-safe refresh, revocable sessions                                                      |
 | Refresh storage        | SHA-256 hash of the refresh token on the user document                                                           | A database leak does not expose usable tokens                                             |
 | Refresh rotation       | New token on every refresh; reuse of an old token clears the session                                             | Detects stolen refresh tokens                                                             |
+| Production cookies     | Always `Secure` in production; `SameSite` from `COOKIE_SAMESITE`                                                 | Same-site and cross-site hosting need different cookie rules                              |
+| Proxy trust            | `TRUST_PROXY` hop count                                                                                          | Correct client IP and per-client rate limits behind a host proxy                          |
+| CI                     | GitHub Actions: server job with MongoDB service, client job                                                      | The same gates run locally and on every push/PR                                           |
 | Passwords              | bcryptjs, cost factor 12                                                                                         | Slow hashing resists brute force                                                          |
 | Validation             | Zod for env and request bodies                                                                                   | One schema source; infer TS types                                                         |
 | Response shape         | `{ success, message, data, meta? }`                                                                              | Predictable frontend handling                                                             |
@@ -190,28 +193,31 @@ customer lists use `?search`, `?active`/`?status`, `?page` and `?limit`.
 
 ## 7. Environment
 
-| Item         | Value                                                                                                                                                       |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OS           | Windows 10 x64, Git Bash                                                                                                                                    |
-| Node         | v22.14.0 via nvm4w (`.nvmrc`)                                                                                                                               |
-| npm          | 10.9.2                                                                                                                                                      |
-| MongoDB      | 8.2 local, `mongodb://127.0.0.1:27017/ecommerce_dev`                                                                                                        |
-| API (dev)    | http://localhost:5000/api/v1                                                                                                                                |
-| Client (dev) | http://localhost:5173, `VITE_API_URL` (default `http://localhost:5000/api/v1`)                                                                              |
-| CORS         | `CORS_ORIGIN=http://localhost:5173`, credentials enabled                                                                                                    |
-| Auth env     | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12`        |
-| Payment env  | `PAYMENT_MODE=mock` locally; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; production requires `razorpay` mode and a key id          |
-| Upload env   | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER` (default `ecommerce-platform`); uploads return `503` when unset |
-| Rate limits  | `RATE_LIMIT_WINDOW_MINUTES=15`, `RATE_LIMIT_MAX=300`, `AUTH_RATE_LIMIT_MAX=30`                                                                              |
+| Item         | Value                                                                                                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OS           | Windows 10 x64, Git Bash                                                                                                                                                |
+| Node         | v22.14.0 via nvm4w (`.nvmrc`)                                                                                                                                           |
+| npm          | 10.9.2                                                                                                                                                                  |
+| MongoDB      | 8.2 local, `mongodb://127.0.0.1:27017/ecommerce_dev`                                                                                                                    |
+| API (dev)    | http://localhost:5000/api/v1                                                                                                                                            |
+| Client (dev) | http://localhost:5173, `VITE_API_URL` (default `http://localhost:5000/api/v1`)                                                                                          |
+| CORS         | `CORS_ORIGIN=http://localhost:5173`, credentials enabled                                                                                                                |
+| Auth env     | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (32+ chars, different), `JWT_ACCESS_TTL_SECONDS=900`, `JWT_REFRESH_TTL_SECONDS=604800`, `BCRYPT_ROUNDS=12`                    |
+| Payment env  | `PAYMENT_MODE=mock` locally; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; production requires `razorpay` mode and a key id                      |
+| Upload env   | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER` (default `ecommerce-platform`); uploads return `503` when unset             |
+| Rate limits  | `RATE_LIMIT_WINDOW_MINUTES=15`, `RATE_LIMIT_MAX=300`, `AUTH_RATE_LIMIT_MAX=30`                                                                                          |
 | Infra env    | `LOG_LEVEL=info`, `CACHE_DRIVER=memory`, `CACHE_TTL_SECONDS=60`, `QUEUE_DRIVER=memory`, `MAIL_DRIVER=log`, `MAIL_FROM`; `REDIS_URL` for redis/bullmq, `SMTP_*` for smtp |
-| Test DB      | `mongodb://127.0.0.1:27017/ecommerce_test` (set by `server/tests/setup.ts`, dropped after the suite)                                                        |
-| Admin seed   | `npm run seed:admin -- <email> <password> [name]`                                                                                                           |
-| Catalog seed | `npm run seed:catalog` (idempotent)                                                                                                                         |
-| VS Code      | 1.139.1                                                                                                                                                     |
-| GitHub CLI   | 2.103.3, authenticated as `Owais101074` (keyring)                                                                                                           |
-| GitHub repo  | `ecommerce-platform`, public, default branch `main`                                                                                                         |
-| Docker       | not installed; `Dockerfile` and `docker-compose.yml` added in Phase 12 but not runtime-verified locally                                                    |
-| Redis        | not installed; cache/queue default to in-process drivers                                                                                                    |
+| Deployment   | `TRUST_PROXY=1` behind Render, `COOKIE_SAMESITE=none` for cross-site hosting, optional `COOKIE_DOMAIN`; production rejects http/localhost CORS origins                  |
+| CI           | `.github/workflows/ci.yml` — server (MongoDB 7 service) and client jobs: install, typecheck, lint, format check, test, build                                            |
+| Live hosts   | Not provisioned; `render.yaml` + `client/vercel.json` + `docs/deployment.md` hold the configuration; requires the owner's accounts                                      |
+| Test DB      | `mongodb://127.0.0.1:27017/ecommerce_test` (set by `server/tests/setup.ts`, dropped after the suite)                                                                    |
+| Admin seed   | `npm run seed:admin -- <email> <password> [name]`                                                                                                                       |
+| Catalog seed | `npm run seed:catalog` (idempotent)                                                                                                                                     |
+| VS Code      | 1.139.1                                                                                                                                                                 |
+| GitHub CLI   | 2.103.3, authenticated as `Owais101074` (keyring)                                                                                                                       |
+| GitHub repo  | `ecommerce-platform`, public, default branch `main`                                                                                                                     |
+| Docker       | not installed; `Dockerfile` and `docker-compose.yml` added in Phase 12 but not runtime-verified locally                                                                 |
+| Redis        | not installed; cache/queue default to in-process drivers                                                                                                                |
 
 ## 8. Installed dependencies
 
@@ -546,29 +552,49 @@ jsdom, @testing-library/react, @testing-library/jest-dom, `@types/*`.
 - [x] Server `typecheck`, `lint`, `format:check`, `build` and live API check
 - [ ] Close Phase 12 review
 
+### Phase 13 — Deployment and CI/CD
+
+- [x] `TRUST_PROXY`, `COOKIE_SAMESITE` and `COOKIE_DOMAIN` environment settings
+- [x] Production startup guards: HTTPS-only non-localhost CORS, `SameSite=None`
+      only with `NODE_ENV=production`
+- [x] Shared cookie options; `Secure` always on in production
+- [x] `GET /api/v1/health/live` liveness probe beside the readiness `/health`
+- [x] `render.yaml` API blueprint with `sync: false` secrets
+- [x] `client/vercel.json` with SPA rewrites and static security headers
+- [x] GitHub Actions CI for server (MongoDB 7 service) and client
+- [x] Deployment tests for liveness/readiness, CSRF preflight and cookie flags
+      (53 tests across 9 files)
+- [x] `docs/deployment.md` runbook: Atlas, Redis, Render, Vercel, webhook,
+      cookies/CORS, smoke tests, rollback, troubleshooting
+- [x] Server and client `typecheck`, `lint`, `format:check`, `build`, tests
+- [x] Production-mode live check of cookie flags, CORS, health and request id
+- [ ] Provision live hosts and record public URLs (needs owner accounts)
+- [ ] Close Phase 13 review
+
 **Scope note:** `server/` was initialized at the start of Phase 1 and `client/`
 at the start of Phase 4, so tooling is configured once, in context, instead of
 twice.
 
 ## 10. Pending tasks
 
-| Phase | Task                                                                       | Status      |
-| ----- | -------------------------------------------------------------------------- | ----------- |
-| 0     | GitHub repo + first push                                                   | done        |
-| 1     | Express + TS scaffold, env config, DB connect, error middleware, `/health` | done        |
-| 2     | Auth module, JWT, roles, protected routes                                  | done        |
-| 3     | Category + product CRUD, search/filter/sort/pagination, seed script        | done        |
-| 4     | Vite + React + Tailwind + Router + Query scaffold                          | done        |
-| 4     | Storefront UI refresh (design system, shell, auth layout, pages)           | done        |
-| 5     | Catalogue listing, product detail, department pages, profile + password UI | done        |
-| 6     | Cart + wishlist                                                            | done        |
-| 7     | Addresses, checkout quote, orders, order history/detail                    | done        |
-| 8     | Razorpay integration, signature verification, webhook, failure/abandon     | done        |
-| 9     | Order lifecycle + cancellation/refund                                      | done        |
-| 10    | Admin dashboard, coupons and Cloudinary uploads                            | done        |
-| 11    | Reviews, security hardening and test suites                                | done        |
-| 12    | Redis cache, jobs, email, logging, indexes, Docker                         | done        |
-| 13    | Deployment + GitHub Actions                                                | not started |
+| Phase | Task                                                                       | Status                   |
+| ----- | -------------------------------------------------------------------------- | ------------------------ |
+| 0     | GitHub repo + first push                                                   | done                     |
+| 1     | Express + TS scaffold, env config, DB connect, error middleware, `/health` | done                     |
+| 2     | Auth module, JWT, roles, protected routes                                  | done                     |
+| 3     | Category + product CRUD, search/filter/sort/pagination, seed script        | done                     |
+| 4     | Vite + React + Tailwind + Router + Query scaffold                          | done                     |
+| 4     | Storefront UI refresh (design system, shell, auth layout, pages)           | done                     |
+| 5     | Catalogue listing, product detail, department pages, profile + password UI | done                     |
+| 6     | Cart + wishlist                                                            | done                     |
+| 7     | Addresses, checkout quote, orders, order history/detail                    | done                     |
+| 8     | Razorpay integration, signature verification, webhook, failure/abandon     | done                     |
+| 9     | Order lifecycle + cancellation/refund                                      | done                     |
+| 10    | Admin dashboard, coupons and Cloudinary uploads                            | done                     |
+| 11    | Reviews, security hardening and test suites                                | done                     |
+| 12    | Redis cache, jobs, email, logging, indexes, Docker                         | done                     |
+| 13    | Deployment config + GitHub Actions                                         | done                     |
+| 13    | Provision Atlas/Redis/Render/Vercel and publish public URLs                | pending (owner accounts) |
 
 ## 11. Known bugs
 

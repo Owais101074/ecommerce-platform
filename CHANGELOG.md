@@ -310,6 +310,24 @@ updatedAt }`; cancelling clears it and the detail page renders it.
 - **Phase 12** — server tests for request correlation, health driver reporting,
   cache read-through/invalidation, and order notification idempotency
   (49 tests across 8 files).
+- **Phase 13** — environment-driven production settings: `TRUST_PROXY`,
+  `COOKIE_SAMESITE` and `COOKIE_DOMAIN`. Startup rejects localhost/`http://`
+  CORS origins in production and `SameSite=None` outside production.
+- **Phase 13** — refresh and CSRF cookies share Secure/SameSite/domain options;
+  production always sets `Secure`, and cross-site deployments can use `None`.
+- **Phase 13** — `GET /api/v1/health/live` liveness probe, leaving `/health` as
+  the database-aware readiness probe used by the host.
+- **Phase 13** — `render.yaml` blueprint for the API with every secret marked
+  `sync: false`, plus `client/vercel.json` with SPA rewrites and security
+  headers.
+- **Phase 13** — GitHub Actions CI: server job (MongoDB 7 service) and client job
+  running install, typecheck, lint, format check, tests and build.
+- **Phase 13** — `docs/deployment.md` runbook for Atlas, Redis, Render, Vercel,
+  Razorpay webhooks, cookies/CORS, smoke tests, rollback and troubleshooting.
+- **Phase 13** — client logs a clear warning when a production build has no
+  `VITE_API_URL`.
+- **Phase 13** — deployment tests for liveness/readiness, CSRF preflight headers
+  and cookie flags (53 server tests across 9 files).
 
 ### Fixed
 
@@ -622,3 +640,21 @@ updatedAt }`; cancelling clears it and the detail page renders it.
   the memory and log drivers are what the suite and live check used.
 - `npm audit --omit=dev` reports 0 vulnerabilities; the 10 moderate advisories
   remain in the ESLint `minimatch` chain (dev only).
+- Phase 13 server suite: 53 tests across 9 files pass, including the new
+  liveness/readiness, CORS preflight and cookie-flag assertions.
+- Phase 13 production-mode check: the API started with `NODE_ENV=production`,
+  `COOKIE_SAMESITE=none` and `TRUST_PROXY=1`; registration returned
+  `refreshToken` with `HttpOnly; Secure; SameSite=None`, the CSRF cookie stayed
+  readable, `X-Request-Id` was echoed, `/health/live` returned 200, an allowed
+  origin was echoed, and `http://localhost:5173` received `403`.
+- Phase 13 startup guards: production with an `http://localhost` CORS origin
+  exited with code 1, and `COOKIE_SAMESITE=none` outside production exited with
+  code 1, each with a specific message.
+- Phase 13 gates: server and client `typecheck`, `lint`, `format:check` and
+  `build` pass; client tests 12/12.
+- Phase 13 did not deploy to live hosts because that needs the owner's Atlas,
+  Redis, Render, Vercel, Razorpay and SMTP accounts; the repository-side
+  configuration and runbook are complete, and the remaining steps are listed in
+  `docs/deployment.md`.
+- `render.yaml`, `client/vercel.json` and `.github/workflows/ci.yml` parse
+  successfully; the CI workflow's first real run happens on the Phase 13 push.

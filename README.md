@@ -19,36 +19,40 @@ clean architecture, TypeScript, and real-world backend practices.
 ecommerce-platform/
 ├── client/   React application (Phase 4)
 ├── server/   Express API (Phase 1)
-├── docs/     API contract and technical references
-├── PROJECT_CONTEXT.md   Living project state (read this first)
+├── docs/     API contract and deployment runbook
+├── .github/workflows/ci.yml   Server and client CI
+├── render.yaml                Render blueprint for the API
+├── docker-compose.yml         API + MongoDB + Redis
+├── PROJECT_CONTEXT.md         Living project state (read this first)
 ├── CHANGELOG.md
 └── README.md
 ```
 
 ## Project status
 
-| Phase | Description                                 | Status      |
-| ----- | ------------------------------------------- | ----------- |
-| 0     | Planning and architecture                   | Complete    |
-| 1     | Backend foundation                          | Complete    |
-| 2     | Authentication and authorization            | Complete    |
-| 3     | Products and categories                     | Complete    |
-| 4     | Frontend foundation + storefront UI refresh | Complete    |
-| 5     | Customer shopping experience                | Complete    |
-| 6     | Cart and wishlist                           | Complete    |
-| 7     | Checkout, addresses and orders              | Complete    |
-| 8     | Payments                                    | Complete    |
-| 9     | Order management                            | Complete    |
-| 10    | Admin dashboard                             | Complete    |
-| 11    | Testing and security                        | Complete    |
-| 12    | Advanced backend                            | Complete    |
-| 13    | Deployment and CI/CD                        | Not started |
+| Phase | Description                                 | Status   |
+| ----- | ------------------------------------------- | -------- |
+| 0     | Planning and architecture                   | Complete |
+| 1     | Backend foundation                          | Complete |
+| 2     | Authentication and authorization            | Complete |
+| 3     | Products and categories                     | Complete |
+| 4     | Frontend foundation + storefront UI refresh | Complete |
+| 5     | Customer shopping experience                | Complete |
+| 6     | Cart and wishlist                           | Complete |
+| 7     | Checkout, addresses and orders              | Complete |
+| 8     | Payments                                    | Complete |
+| 9     | Order management                            | Complete |
+| 10    | Admin dashboard                             | Complete |
+| 11    | Testing and security                        | Complete |
+| 12    | Advanced backend                            | Complete |
+| 13    | Deployment and CI/CD                        | Complete |
 
 ## Documentation
 
 - [Project context](PROJECT_CONTEXT.md) — architecture, decisions, current state
 - [Project guide](PROJECT_GUIDE.md) — complete phase-by-phase guide, workflows and explanations
-- [API contract](docs/api-contract.md) — planned endpoints and conventions
+- [API contract](docs/api-contract.md) — endpoints and conventions
+- [Deployment runbook](docs/deployment.md) — Atlas, Redis, Render, Vercel, domains, smoke tests and rollback
 - [Changelog](CHANGELOG.md)
 
 ## Getting started
@@ -74,7 +78,8 @@ The API starts at `http://localhost:5000`.
 Verify it:
 
 ```bash
-curl http://localhost:5000/api/v1/health
+curl http://localhost:5000/api/v1/health        # readiness: 503 if MongoDB is down
+curl http://localhost:5000/api/v1/health/live   # liveness: process only, never touches MongoDB
 ```
 
 ```json
@@ -346,11 +351,11 @@ the httpOnly refresh cookie, and a 401 triggers one silent refresh and retry.
 Every piece of infrastructure is driver-based, so the API runs with zero external
 services in development and tests:
 
-| Capability | Default | Alternatives | Notes                                                          |
-| ---------- | ------- | ------------ | -------------------------------------------------------------- |
-| Cache      | memory  | `redis`, none | Read-through catalogue cache; invalidated on catalogue writes  |
+| Capability | Default | Alternatives   | Notes                                                         |
+| ---------- | ------- | -------------- | ------------------------------------------------------------- |
+| Cache      | memory  | `redis`, none  | Read-through catalogue cache; invalidated on catalogue writes |
 | Queue      | memory  | `bullmq`, none | Email jobs; BullMQ retries 3× with exponential backoff        |
-| Mail       | log     | `smtp`, none | `log` records messages in an in-memory outbox and logs them    |
+| Mail       | log     | `smtp`, none   | `log` records messages in an in-memory outbox and logs them   |
 
 - Catalogue list/detail and category reads are cached with a TTL
   (`CACHE_TTL_SECONDS`, default 60). Product, category, review-rating and
@@ -370,14 +375,14 @@ services in development and tests:
 
 Environment variables (see `server/.env.example`):
 
-| Variable                          | Default                                  |
-| --------------------------------- | ---------------------------------------- |
-| `LOG_LEVEL`                       | `info` (`debug`/`info`/`warn`/`error`)   |
-| `CACHE_DRIVER` / `CACHE_TTL_SECONDS` | `memory` / `60`                       |
-| `QUEUE_DRIVER`                    | `memory`                                 |
-| `MAIL_DRIVER` / `MAIL_FROM`       | `log` / `Ecommerce Platform <no-reply@example.com>` |
-| `REDIS_URL`                       | empty; required for `redis`/`bullmq`     |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | empty / 587 / false; required for `smtp` |
+| Variable                                                          | Default                                             |
+| ----------------------------------------------------------------- | --------------------------------------------------- |
+| `LOG_LEVEL`                                                       | `info` (`debug`/`info`/`warn`/`error`)              |
+| `CACHE_DRIVER` / `CACHE_TTL_SECONDS`                              | `memory` / `60`                                     |
+| `QUEUE_DRIVER`                                                    | `memory`                                            |
+| `MAIL_DRIVER` / `MAIL_FROM`                                       | `log` / `Ecommerce Platform <no-reply@example.com>` |
+| `REDIS_URL`                                                       | empty; required for `redis`/`bullmq`                |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | empty / 587 / false; required for `smtp`            |
 
 #### Docker Compose
 
@@ -397,7 +402,43 @@ docker compose up --build
 
 The API is available at `http://localhost:5000/api/v1`.
 
-### Tests (Phase 12)
+### Deployment and CI/CD (Phase 13)
+
+Deployment configuration lives in the repository; the actual hosting accounts
+are yours to create, so no public URL is committed here.
+
+| Piece    | Configuration                                                     | Host                  |
+| -------- | ----------------------------------------------------------------- | --------------------- |
+| API      | `render.yaml` blueprint                                           | Render Web Service    |
+| Web      | `client/vercel.json` (Vite build, SPA rewrites, security headers) | Vercel                |
+| Database | connection string only                                            | MongoDB Atlas         |
+| Redis    | connection string only                                            | Redis-compatible host |
+| CI       | `.github/workflows/ci.yml`                                        | GitHub Actions        |
+
+Production behaviour is environment-driven:
+
+| Variable               | Effect                                                                   |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `TRUST_PROXY=1`        | Rate limits use the real client IP behind the host proxy                 |
+| `COOKIE_SAMESITE=none` | Refresh/CSRF cookies work when the client and API are on different sites |
+| `COOKIE_DOMAIN`        | Optional parent domain for cookies, e.g. `.example.com`                  |
+| `VITE_API_URL`         | API base URL compiled into the client bundle                             |
+
+Production startup refuses to run with `http://` or localhost origins, mock
+payments, or `SameSite=None` outside `NODE_ENV=production`. `/health` is the
+readiness probe and `/health/live` the liveness probe.
+
+The CI workflow runs two jobs on every push and pull request to `main`:
+
+- **Server:** install, typecheck, lint, format check, Vitest with a MongoDB 7
+  service, build.
+- **Client:** install, typecheck, lint, format check, Vitest, build.
+
+Step-by-step instructions for Atlas, Redis, Render, Vercel, Razorpay webhooks,
+custom domains, cookies/CORS, smoke tests, rollback and troubleshooting are in
+[docs/deployment.md](docs/deployment.md).
+
+### Tests (Phase 13)
 
 ```bash
 cd server && npm test
@@ -413,7 +454,7 @@ formatting helpers, the `Button` primitive, and the route guards.
 
 | Suite  | Files | Tests |
 | ------ | ----- | ----- |
-| Server | 8     | 49    |
+| Server | 9     | 53    |
 | Client | 3     | 12    |
 
 ### Design system

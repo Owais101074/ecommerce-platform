@@ -29,21 +29,21 @@ Status legend: **DONE** = implemented and verified · **PLANNED** = designed but
 
 ## 1. Project at a glance
 
-| Item             | Value                                                                                           |
-| ---------------- | ----------------------------------------------------------------------------------------------- |
-| Type             | Production-style e-commerce platform (learning project)                                         |
-| Repository       | `ecommerce-platform` (public, GitHub)                                                           |
-| Structure        | Monorepo: `client/` + `server/`, independent `package.json` files, no npm workspaces            |
-| Backend          | Node.js 22, Express 5, TypeScript 6, REST, JWT, Zod 4                                           |
-| Database         | MongoDB 8.2 + Mongoose 9                                                                        |
-| Frontend         | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios       |
-| Tooling          | Git, GitHub CLI, ESLint 10, Prettier 3, Postman                                                 |
-| Current phase    | Phase 12 complete (cache, jobs, email, logging, indexes, Docker), awaiting review               |
-| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12                                                        |
-| Next phase       | Phase 13 — Deployment and CI/CD                                                                 |
-| API base         | `http://localhost:5000/api/v1`                                                                  |
-| Client base      | `http://localhost:5173`                                                                         |
-| Database (dev)   | `mongodb://127.0.0.1:27017/ecommerce_dev`                                                       |
+| Item             | Value                                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| Type             | Production-style e-commerce platform (learning project)                                   |
+| Repository       | `ecommerce-platform` (public, GitHub)                                                     |
+| Structure        | Monorepo: `client/` + `server/`, independent `package.json` files, no npm workspaces      |
+| Backend          | Node.js 22, Express 5, TypeScript 6, REST, JWT, Zod 4                                     |
+| Database         | MongoDB 8.2 + Mongoose 9                                                                  |
+| Frontend         | React 19 + TypeScript 6 + Vite 8 + Tailwind 4 + React Router 7 + TanStack Query 5 + Axios |
+| Tooling          | Git, GitHub CLI, ESLint 10, Prettier 3, Postman                                           |
+| Current phase    | Phase 13 complete (production config, CI, deployment runbook), awaiting review            |
+| Completed phases | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12                                                  |
+| Next phase       | Phase 13 — Deployment and CI/CD                                                           |
+| API base         | `http://localhost:5000/api/v1`                                                            |
+| Client base      | `http://localhost:5173`                                                                   |
+| Database (dev)   | `mongodb://127.0.0.1:27017/ecommerce_dev`                                                 |
 
 ---
 
@@ -1550,19 +1550,64 @@ health dependencies.
 
 ---
 
-### Phase 13 — Deployment and CI/CD — **PLANNED**
+### Phase 13 — Deployment and CI/CD — **DONE**
 
-**Goal:** ship it.
+**Goal:** make the app deployable and gate every change.
 
-**Will deliver:**
+**Delivered:**
 
-- Frontend and backend deployment.
-- Production MongoDB (Atlas or managed).
-- Production environment variables and secrets management.
-- Domain and HTTPS.
-- GitHub Actions: typecheck, lint, tests, build.
-- Production smoke tests.
-- Complete README and deployment documentation.
+- `config/env.ts` gained three deployment knobs: `TRUST_PROXY` (proxy hops),
+  `COOKIE_SAMESITE` (`lax`/`strict`/`none`) and `COOKIE_DOMAIN`. Two startup
+  refinements make bad production config impossible: production rejects
+  `http://` or localhost `CORS_ORIGIN` values, and `SameSite=None` is rejected
+  outside production because browsers only accept it on Secure cookies.
+- `utils/cookies.ts` builds refresh and CSRF cookies from shared options.
+  `Secure` is always on in production; `SameSite` and the optional domain come
+  from the environment. Clearing a cookie reuses the same options.
+- `app.ts` sets `trust proxy` to the configured hop count, so `req.ip` and the
+  rate limiter see the real client behind Render's proxy instead of collapsing
+  every visitor into one bucket.
+- `GET /api/v1/health/live` is a liveness probe that never touches MongoDB, while
+  `/health` remains the readiness probe (`503` while the database is down) and is
+  the host's health-check path.
+- `render.yaml` is a Render Blueprint for the API: Node runtime, `server/` root,
+  `npm ci --include=dev && npm run build`, readiness path, and every secret
+  marked `sync: false` so Render prompts for it and never stores it in Git.
+- `client/vercel.json` declares the Vite build, rewrites every unknown path to
+  `index.html` (so deep links survive a refresh) and adds `nosniff`,
+  `Referrer-Policy` and `X-Frame-Options` headers for the static app.
+- `.github/workflows/ci.yml` runs two jobs on pushes and pull requests to
+  `main`. The server job starts a MongoDB 7 service and runs install, typecheck,
+  lint, format check, tests and build; the client job runs the same gates without
+  the service. Concurrency cancels superseded runs.
+- `client/src/lib/env.ts` warns at runtime when a production bundle was built
+  without `VITE_API_URL`, instead of silently calling localhost.
+- `docs/deployment.md` is the runbook: Atlas, Redis, Render, Vercel, Razorpay
+  webhook, the cookie/CORS matrix for same-site vs cross-site domains, a curl and
+  browser smoke checklist, CI, rollback and a troubleshooting table.
+- `tests/deployment.test.ts` covers liveness vs readiness, the CSRF header in a
+  CORS preflight, and the refresh/CSRF cookie flags. Total: 53 tests across
+  9 files.
+
+**Verification:** the API was started with `NODE_ENV=production`,
+`COOKIE_SAMESITE=none` and `TRUST_PROXY=1`. Registration returned
+`refreshToken=…; HttpOnly; Secure; SameSite=None` and a readable `Secure;
+SameSite=None` CSRF cookie, `X-Request-Id` was echoed, `/health/live` returned
+200, the allowed origin was echoed with credentials, and a localhost origin got
+`403`. Two negative runs exited with code 1 and precise messages: production with
+an http localhost origin, and `SameSite=None` outside production. 53/53 server
+tests pass; client tests 12/12; both apps pass typecheck, lint, format check and
+build. The YAML and JSON deployment files parse. Live hosting was not performed
+because it requires the owner's Atlas, Redis, Render, Vercel, Razorpay and SMTP
+accounts; the runbook lists those steps.
+
+**Key concepts learned:** configuration as code for production (cookies, proxy
+trust, CORS) with validation that fails at boot instead of at the first request,
+why `SameSite` and `Secure` are a pair, why a trusted proxy hop is required for
+per-client rate limiting, liveness vs readiness, separating build-time frontend
+configuration (`VITE_*`) from runtime secrets, SPA rewrites for client-side
+routes, fail-closed secret handling with `sync: false`, and using CI as the same
+gate you run locally.
 
 ---
 
@@ -2448,36 +2493,43 @@ accidentally skipped.
 | XSS                    | Cross-site scripting                                                                                           |
 | JWT `sub`              | Subject claim, here the user id                                                                                |
 | JWT `jti`              | Unique token id claim                                                                                          |
+| Liveness probe         | Endpoint that only proves the process is running                                                               |
+| Readiness probe        | Endpoint that proves the app can serve traffic, e.g. the database is reachable                                 |
+| `SameSite`             | Cookie attribute that controls whether the browser sends it on cross-site requests                             |
+| Trust proxy            | Express setting for how many proxy hops to trust in `X-Forwarded-For`                                          |
+| SPA rewrite            | Rule that returns `index.html` for unknown paths so client-side routes survive a refresh                       |
+| Blueprint              | Render's YAML description of services, build commands and environment variables                                |
 
 ---
 
 ## 15. Known limitations and deferred work
 
-| Area                  | Limitation                                                                                                                                               | Plan                                                              |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Payments              | No real merchant credentials are used here, so development runs `PAYMENT_MODE=mock`; the `razorpay` path is coded but not exercised against the live API | Swap test keys into `server/.env` and set `PAYMENT_MODE=razorpay` |
-| Refunds               | Refunds are implemented for cancellation, but there is no standalone admin refund screen or partial-refund UI                                            | Add partial refunds and a refund audit view if required           |
-| Webhook retries       | The endpoint is idempotent, but failed webhook processing is not queued; Razorpay retries the HTTP call itself                                           | Queue webhook follow-up work if a side effect needs retries       |
-| Order lifecycle       | Customer cancel and admin confirm/ship/deliver/cancel are implemented; tracking is manual, not fed by a carrier API                                      | Carrier integration later                                         |
-| Coupons               | One code per order, no stacking, automatic campaigns or per-customer limits                                                                              | Extend the pricing service when those rules are required          |
-| Cloudinary            | Uploads need `CLOUDINARY_*` credentials; without them the endpoint returns `503` and products use image URLs                                             | Add credentials to `server/.env` to exercise real uploads         |
-| Stock safety          | Conditional updates with rollback, not MongoDB transactions; multi-document atomicity needs a replica set                                                | Enable a replica set and wrap order/stock/refund writes in a transaction if required |
-| Profile API           | Name and password only; email changes and avatar upload are not built                                                                                    | Later                                                             |
-| Client tests          | Component and guard tests only; no page-level integration or browser E2E suite                                                                           | Add Playwright later                                              |
-| UI verification       | No screenshots captured; in-app browser had no viewport                                                                                                  | Re-check visuals when a real browser is available                 |
-| Catalogue images      | Seed data still ships one image per product even though the admin form accepts up to five                                                                | Add more images to the seed if a gallery demo is needed           |
-| Product images        | Uploads are Cloudinary-only and require credentials                                                                                                      | Add credentials to `server/.env`                                  |
-| Ratings               | Reviews and aggregates exist, but reviews are not purchase-verified and there is no delete or moderation flow                                            | Add verified-purchase, delete and moderation later                |
-| Multi-device sessions | One refresh hash per user                                                                                                                                | Sessions collection later                                         |
-| Automated tests       | 49 server and 12 client tests; no E2E suite and no coverage threshold                                                                                    | Add E2E and coverage gates later                                  |
-| Rate limiting         | Still in-memory per process; the Redis driver is used for cache/jobs, not yet for express-rate-limit                                                     | Add a Redis rate-limit store before running multiple API replicas |
-| CSRF token            | Double-submit covers cookie-authenticated refresh/logout; Bearer routes rely on CORS and the custom header                                               | Keep in sync if cookies are added to other routes                 |
-| Swagger/OpenAPI       | Not implemented                                                                                                                                          | Optional later                                                    |
-| Redis, jobs, email    | Drivers are implemented, but Redis/BullMQ and SMTP were not runtime-verified locally (no services installed); memory/log drivers are the tested default | Run the Redis/SMTP paths once those services are available        |
-| Scheduled jobs        | The queue currently carries email jobs only; cleanup and payment-reconciliation jobs are not implemented                                            | Add repeatable BullMQ jobs for abandoned carts, stale payments and retention |
-| Docker                | `Dockerfile` and Compose are written but could not be built or run here                                                                                  | Verify `docker compose up --build` on a machine with Docker       |
-| Deployment/CI         | Not implemented                                                                                                                                          | Phase 13                                                          |
-| Admin seed cleanup    | Test admin deleted after verification                                                                                                                    | Create your own with the script                                   |
+| Area                  | Limitation                                                                                                                                                              | Plan                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Payments              | No real merchant credentials are used here, so development runs `PAYMENT_MODE=mock`; the `razorpay` path is coded but not exercised against the live API                | Swap test keys into `server/.env` and set `PAYMENT_MODE=razorpay`                    |
+| Refunds               | Refunds are implemented for cancellation, but there is no standalone admin refund screen or partial-refund UI                                                           | Add partial refunds and a refund audit view if required                              |
+| Webhook retries       | The endpoint is idempotent, but failed webhook processing is not queued; Razorpay retries the HTTP call itself                                                          | Queue webhook follow-up work if a side effect needs retries                          |
+| Order lifecycle       | Customer cancel and admin confirm/ship/deliver/cancel are implemented; tracking is manual, not fed by a carrier API                                                     | Carrier integration later                                                            |
+| Coupons               | One code per order, no stacking, automatic campaigns or per-customer limits                                                                                             | Extend the pricing service when those rules are required                             |
+| Cloudinary            | Uploads need `CLOUDINARY_*` credentials; without them the endpoint returns `503` and products use image URLs                                                            | Add credentials to `server/.env` to exercise real uploads                            |
+| Stock safety          | Conditional updates with rollback, not MongoDB transactions; multi-document atomicity needs a replica set                                                               | Enable a replica set and wrap order/stock/refund writes in a transaction if required |
+| Profile API           | Name and password only; email changes and avatar upload are not built                                                                                                   | Later                                                                                |
+| Client tests          | Component and guard tests only; no page-level integration or browser E2E suite                                                                                          | Add Playwright later                                                                 |
+| UI verification       | No screenshots captured; in-app browser had no viewport                                                                                                                 | Re-check visuals when a real browser is available                                    |
+| Catalogue images      | Seed data still ships one image per product even though the admin form accepts up to five                                                                               | Add more images to the seed if a gallery demo is needed                              |
+| Product images        | Uploads are Cloudinary-only and require credentials                                                                                                                     | Add credentials to `server/.env`                                                     |
+| Ratings               | Reviews and aggregates exist, but reviews are not purchase-verified and there is no delete or moderation flow                                                           | Add verified-purchase, delete and moderation later                                   |
+| Multi-device sessions | One refresh hash per user                                                                                                                                               | Sessions collection later                                                            |
+| Automated tests       | 53 server and 12 client tests; no E2E suite and no coverage threshold                                                                                                   | Add E2E and coverage gates later                                                     |
+| Rate limiting         | Still in-memory per process; the Redis driver is used for cache/jobs, not yet for express-rate-limit                                                                    | Add a Redis rate-limit store before running multiple API replicas                    |
+| CSRF token            | Double-submit covers cookie-authenticated refresh/logout; Bearer routes rely on CORS and the custom header                                                              | Keep in sync if cookies are added to other routes                                    |
+| Swagger/OpenAPI       | Not implemented                                                                                                                                                         | Optional later                                                                       |
+| Redis, jobs, email    | Drivers are implemented, but Redis/BullMQ and SMTP were not runtime-verified locally (no services installed); memory/log drivers are the tested default                 | Run the Redis/SMTP paths once those services are available                           |
+| Scheduled jobs        | The queue currently carries email jobs only; cleanup and payment-reconciliation jobs are not implemented                                                                | Add repeatable BullMQ jobs for abandoned carts, stale payments and retention         |
+| Docker                | `Dockerfile` and Compose are written but could not be built or run here                                                                                                 | Verify `docker compose up --build` on a machine with Docker                          |
+| Live deployment       | Repository configuration, CI and the runbook are complete, but no public hosts are provisioned because that needs the owner's Atlas/Render/Vercel/payment/SMTP accounts | Follow `docs/deployment.md`                                                          |
+| CI verification       | The workflow is committed; its first run happens on the Phase 13 push                                                                                                   | Check the Actions tab and fix any runner-only issue                                  |
+| Admin seed cleanup    | Test admin deleted after verification                                                                                                                                   | Create your own with the script                                                      |
 
 Known bugs: none.
 

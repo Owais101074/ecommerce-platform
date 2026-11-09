@@ -1,7 +1,7 @@
 # API Contract
 
 Each endpoint marked with a phase is implemented as that phase completes.
-Phases 1–12 are live.
+Phases 1–13 are implemented.
 
 ## Conventions
 
@@ -13,7 +13,7 @@ Phases 1–12 are live.
 | Roles      | `customer` (default), `admin`                                                      |
 | CSRF       | `X-CSRF-Token` header must match the readable `csrfToken` cookie on refresh/logout |
 | Rate limit | Per IP, 15-minute window: 300 requests for `/api/v1`, 30 for login/register        |
-| Request ID | `X-Request-Id` is echoed on every response and can be supplied for log tracing    |
+| Request ID | `X-Request-Id` is echoed on every response and can be supplied for log tracing     |
 | Pagination | `?page=1&limit=20`; responses include `meta: { page, limit, total, totalPages }`   |
 | Sorting    | `?sort=price_asc`, `price_desc`, `newest`, `rating`                                |
 | Money      | Integer **paise** in every request/response field                                  |
@@ -61,11 +61,14 @@ Phases 1–12 are live.
 
 ## Health — Phase 1
 
-| Method | Endpoint  | Access | Purpose                                          |
-| ------ | --------- | ------ | ------------------------------------------------ |
-| GET    | `/health` | public | Liveness, MongoDB state and active infra drivers |
+| Method | Endpoint       | Access | Purpose                                                    |
+| ------ | -------------- | ------ | ---------------------------------------------------------- |
+| GET    | `/health`      | public | Readiness: `503` while MongoDB is down, plus infra drivers |
+| GET    | `/health/live` | public | Liveness: process only, never touches MongoDB              |
 
 `data.infrastructure` reports `cache`, `queue` and `mail` driver names (Phase 12).
+`/health` is the host health-check path; use `/health/live` when a restart should
+not be triggered by a database outage (Phase 13).
 
 ## Auth — Phase 2
 
@@ -566,18 +569,19 @@ Missing file or wrong type → `400`; Cloudinary not configured → `503`.
 
 ## Endpoint ownership
 
-| Phase | Endpoints added                                                                                            |
-| ----- | ---------------------------------------------------------------------------------------------------------- |
-| 1     | `/health`                                                                                                  |
-| 2     | `/auth/*`, `/admin/ping`                                                                                   |
-| 3     | `/categories/*`, `/products/*`                                                                             |
-| 6     | `/cart/*`, `/wishlist/*`                                                                                   |
-| 7     | `/addresses/*`, `POST /orders/quote`, `POST /orders`, `GET /orders/*`                                      |
-| 8     | `/payments/start`, `/payments/verify`, `/payments/abandon`, `/payments/mock/complete`, `/payments/webhook` |
-| 9     | `PATCH /orders/:id/cancel`, `GET /admin/orders`, `GET /admin/orders/:id`, `PATCH /admin/orders/:id/status` |
+| Phase | Endpoints added                                                                                                                                                |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | `/health`                                                                                                                                                      |
+| 2     | `/auth/*`, `/admin/ping`                                                                                                                                       |
+| 3     | `/categories/*`, `/products/*`                                                                                                                                 |
+| 6     | `/cart/*`, `/wishlist/*`                                                                                                                                       |
+| 7     | `/addresses/*`, `POST /orders/quote`, `POST /orders`, `GET /orders/*`                                                                                          |
+| 8     | `/payments/start`, `/payments/verify`, `/payments/abandon`, `/payments/mock/complete`, `/payments/webhook`                                                     |
+| 9     | `PATCH /orders/:id/cancel`, `GET /admin/orders`, `GET /admin/orders/:id`, `PATCH /admin/orders/:id/status`                                                     |
 | 10    | `GET /admin/stats`, `GET /admin/customers`, `GET /admin/customers/:id`, `PATCH /admin/customers/:id/status`, `POST /admin/uploads/product-image`, `/coupons/*` |
-| 11    | `GET /products/:slug/reviews`, `POST /products/:id/reviews`, `PATCH /reviews/:id`                          |
-| 12    | No new routes; `/health` reports infrastructure drivers and every response echoes `X-Request-Id`           |
+| 11    | `GET /products/:slug/reviews`, `POST /products/:id/reviews`, `PATCH /reviews/:id`                                                                              |
+| 12    | No new routes; `/health` reports infrastructure drivers and every response echoes `X-Request-Id`                                                               |
+| 13    | `GET /health/live` (liveness); `/health` remains the readiness probe                                                                                           |
 
 Any endpoint added outside this document must be recorded here in the same
 commit that introduces it.
